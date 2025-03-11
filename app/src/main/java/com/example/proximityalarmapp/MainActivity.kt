@@ -1,11 +1,13 @@
 package com.example.proximityalarmapp
 
+import android.content.Intent
 import android.os.Bundle
 import android.widget.ImageButton
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
 import com.google.android.material.navigation.NavigationView
+import kotlin.jvm.java
 
 class MainActivity : AppCompatActivity() {
 
@@ -29,7 +31,7 @@ class MainActivity : AppCompatActivity() {
         navigationView.setNavigationItemSelectedListener { menuItem ->
             when (menuItem.itemId) {
                 R.id.nav_alarms -> {
-                    //startActivity(Intent(this, AlarmsActivity::class.java)) Смена Activity на AlarmsActivity
+                    startActivity(Intent(this, AlarmsActivity::class.java)) //Смена Activity на AlarmsActivity
                     drawerLayout.closeDrawers() // Закрываем меню после выбора
                     true
                 }

@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="CustomNavigationText" parent="TextAppearance.AppCompat">
+    <style name="CustomNavigationText">
         <item name="android:fontFamily">@font/inter</item>
-        <item name="android:textSize">40sp</item>
+        <item name="android:textSize">24sp</item>
+        <!--<item name="android:textColor"></item>-->
     </style>
 </resources>
