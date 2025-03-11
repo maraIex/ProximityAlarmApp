@@ -36,7 +36,10 @@ android {
 }
 
 dependencies {
-
+    // Custom dependencies
+    implementation(libs.androidx.drawerlayout)
+    implementation(libs.google.material)
+    // Basic dependencies
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)

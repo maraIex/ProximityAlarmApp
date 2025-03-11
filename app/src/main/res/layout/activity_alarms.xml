@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <!-- Верхняя панель с уведомлением -->
+    <TextView
+        android:id="@+id/tv_notification"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Будильник. Звонок через N метров"
+        android:textSize="18sp"
+        android:gravity="center"
+        android:padding="16dp"
+        android:background="#ff9800"
+        android:textColor="#ffffff" />
+
+    <!-- RecyclerView для списка будильников -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"/>
+
+    <!-- Кнопка добавления нового будильника -->
+    <ImageButton
+        android:id="@+id/btn_add_alarm"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@android:drawable/ic_input_add"
+        android:layout_gravity="center"
+        android:contentDescription="Add Alarm"
+        android:background="?android:attr/selectableItemBackground"
+        android:layout_margin="16dp"/>
+</LinearLayout>
