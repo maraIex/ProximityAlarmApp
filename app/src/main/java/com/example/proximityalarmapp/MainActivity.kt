@@ -1,6 +1,5 @@
 package com.example.proximityalarmapp
 
-import android.content.Intent
 import android.os.Bundle
 import android.widget.ImageButton
 import androidx.appcompat.app.AppCompatActivity
@@ -19,7 +18,7 @@ class MainActivity : AppCompatActivity() {
         // Поиск элементов в интерфейсе по id
         drawerLayout = findViewById(R.id.drawer_layout)
         val navigationView: NavigationView = findViewById(R.id.navigation_view)
-        val btnMenu: ImageButton = findViewById(R.id.btn_menu)
+        val btnMenu: ImageButton = findViewById(R.id.btn_drawer)
 
         // Если кнопка шторки нажата
         btnMenu.setOnClickListener {

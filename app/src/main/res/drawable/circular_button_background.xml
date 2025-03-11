@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="#4d4d4d" android:state_pressed="true"/>
+    <solid android:color="@color/white"/> <!-- Белый цвет фона -->
+    <corners android:radius="48dp"/> <!-- Округлые углы для круга -->
+    <size android:width="48dp" android:height="48dp"/> <!-- Размер кнопки -->
+</shape>
