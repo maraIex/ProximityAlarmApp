@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/nav_settings"
+        android:title="Настройки"
+        android:icon="@android:drawable/ic_menu_preferences"
+        android:titleTextAppearance="@style/CustomNavigationText"/>
+
+    <item
+        android:id="@+id/nav_alarms"
+        android:title="Будильники"
+        android:icon="@android:drawable/ic_menu_agenda"
+        android:titleTextAppearance="@style/CustomNavigationText"/>
+</menu>
