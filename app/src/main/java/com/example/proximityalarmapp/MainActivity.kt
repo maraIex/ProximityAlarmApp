@@ -1,5 +1,6 @@
 package com.example.proximityalarmapp
 
+import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import android.widget.ImageButton
@@ -12,12 +13,12 @@ import org.oscim.layers.tile.buildings.BuildingLayer
 import org.oscim.layers.tile.vector.VectorTileLayer
 import org.oscim.tiling.source.mapfile.MapFileTileSource
 import java.io.File
-
+import com.example.proximityalarmapp.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var drawerLayout: DrawerLayout
-
+    private lateinit var binding: ActivityMainBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
