@@ -39,6 +39,7 @@ dependencies {
     // Custom dependencies
     implementation(libs.androidx.drawerlayout)
     implementation(libs.google.material)
+
     // Basic dependencies
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
@@ -48,4 +49,24 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+
+    // JitPack
+    implementation(libs.github.vtm)
+
+    // org.mapsforge
+    implementation(libs.mapsforge.map.android)
+    implementation(libs.mapsforge.core)
+
+    //MapsForge
+        // Maps
+    implementation(libs.mapsforge.mapsforge.core)
+    implementation(libs.mapsforge.map)
+    implementation(libs.mapsforge.map.reader)
+    implementation(libs.mapsforge.themes)
+            // Android
+    implementation(libs.mapsforge.map.android)
+    implementation(libs.androidsvg)
+
+        //POI
+    implementation(libs.mapsforge.poi)
 }
