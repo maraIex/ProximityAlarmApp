@@ -53,10 +53,6 @@ dependencies {
     // JitPack
     implementation(libs.github.vtm)
 
-    // org.mapsforge
-    implementation(libs.mapsforge.map.android)
-    implementation(libs.mapsforge.core)
-
     //MapsForge
         // Maps
     implementation(libs.mapsforge.mapsforge.core)

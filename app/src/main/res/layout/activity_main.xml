@@ -6,19 +6,9 @@
     android:layout_height="match_parent">
 
     <!-- Контейнер для карты -->
-    <FrameLayout
-        android:id="@+id/main_content"
+    <org.mapsforge.map.android.view.MapView
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
-
-        <!-- Удалить этот ImageView при добавлении реальной карты -->
-        <ImageView
-            android:id="@+id/map_placeholder"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:src="@drawable/map_placeholder"
-            android:scaleType="centerCrop"/>
-    </FrameLayout>
+        android:layout_height="match_parent"/>
 
     <!-- Контейнер для кнопки -->
     <FrameLayout
