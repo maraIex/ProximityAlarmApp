@@ -63,7 +63,7 @@ dependencies {
     implementation(libs.mapsforge.map)
     implementation(libs.mapsforge.map.reader)
     implementation(libs.mapsforge.themes)
-            // Android
+    // Android
     implementation(libs.mapsforge.map.android)
     implementation(libs.androidsvg)
 
