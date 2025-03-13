@@ -1,32 +1,78 @@
 package com.example.proximityalarmapp
 
-import android.app.Activity
+//Бибилиотек для рисования маркера на карте
+// Импорт для биндингов
+// Импорт дял навигации
+// Импорты для MapsForge. Карты, андроид утилиты, офлайн рендерер, и считывание файлов
 import android.content.Intent
-import android.net.Uri
+import android.graphics.drawable.Drawable
 import android.os.Bundle
+import android.view.View
 import android.widget.ImageButton
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
 import com.google.android.material.navigation.NavigationView
-import com.example.proximityalarmapp.databinding.ActivityMainBinding
+import org.mapsforge.core.graphics.Bitmap
+import org.mapsforge.core.model.LatLong
 import org.mapsforge.map.android.graphics.AndroidGraphicFactory
 import org.mapsforge.map.android.util.AndroidUtil
+import org.mapsforge.map.android.view.MapView
+import org.mapsforge.map.datastore.MapDataStore
+import org.mapsforge.map.layer.overlay.Marker
 import org.mapsforge.map.layer.renderer.TileRendererLayer
 import org.mapsforge.map.reader.MapFile
-import java.io.FileInputStream
+import java.io.File
+
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var drawerLayout: DrawerLayout
-    private lateinit var binding: ActivityMainBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        binding = ActivityMainBinding.inflate(layoutInflater)
-        setContentView(binding.root)
+        //Подключение рендерера
+        AndroidGraphicFactory.createInstance(applicationContext)
+
+        //Инициализация карты
+        val mapView = findViewById<MapView>(R.id.map)
+        mapView.setLayerType(View.LAYER_TYPE_SOFTWARE, null)
+
+        //Добавление возможности кликать на карту и кнопок увеличения и уменьшения размерности
+        mapView.isClickable = true
+        mapView.mapScaleBar.isVisible = true
+
+        //Уставновление предлелов Зума
+        mapView.setBuiltInZoomControls(true)
+        mapView.setZoomLevelMin(10.toByte())
+        mapView.setZoomLevelMax(20.toByte())
+
+        //Создание из карты кешфайла для офлайн просмотра
+        val tileCache = AndroidUtil.createTileCache(this, "mapcache",
+            mapView.model.displayModel.tileSize, 1f,
+            mapView.model.frameBufferModel.overdrawFactor)
+
+        //Нахождение файла карты(вшитой в проект)
+        val assetManager = assets
+        //Открытие файла карт из папки assets
+        val file = File(cacheDir, "saratovMap.osm")
+        file.outputStream().use { output ->
+            assetManager.open("saratovMap.osm").copyTo(output)
+        }
+        // Инициализация MapDataStore
+        val mapDataStore: MapDataStore = MapFile(file)
+        //Рендеринг слоев в карте
+        val tileRendererLayer = TileRendererLayer(tileCache, mapDataStore,
+            mapView.model.mapViewPosition, AndroidGraphicFactory.INSTANCE)
+
+        //Добавление слоев в наш MapView
+        mapView.layerManager.layers.add(tileRendererLayer)
+
+        // Добавление в переменную нарисованного курсора
+        val drawable: Drawable? = ContextCompat.getDrawable(this, R.drawable.marker)
+        val bitmap: Bitmap = AndroidGraphicFactory.convertToBitmap(drawable)
 
         // Поиск элементов в интерфейсе по id
         drawerLayout = findViewById(R.id.drawer_layout)
@@ -54,47 +100,5 @@ class MainActivity : AppCompatActivity() {
                 else -> false
             }
         }
-
-        val contract = registerForActivityResult(
-            ActivityResultContracts.StartActivityForResult()
-        ){result->
-            result.data?.data?.let{ uri->
-                openMap(uri)
-            }
-        }
-
-        contract.launch(
-            Intent(
-                Intent.ACTION_OPEN_DOCUMENT
-            ).apply{
-                type = "*/*"
-                addCategory(Intent.CATEGORY_OPENABLE)
-            }
-        )
-    }
-
-    fun openMap(uri: Uri){
-        binding.map.mapScaleBar.isVisible = true
-        binding.map.setBuiltInZoomControls(true)
-        val cache = AndroidUtil.createTileCache(
-            this,
-            "mycache",
-            binding.map.model.displayModel.tileSize,
-            1f,
-            binding.map.model.frameBufferModel.overdrawFactor
-        )
-
-        val stream = contentResolver.openInputStream(uri) as FileInputStream
-
-        val mapStore = MapFile(stream)
-
-        val renderLayer = TileRendererLayer(
-            cache,
-            mapStore,
-            binding.map.model.mapViewPosition,
-            AndroidGraphicFactory.INSTANCE
-        )
-
-        binding.map.layerManager.layers.add(renderLayer)
     }
 }
