@@ -6,7 +6,6 @@
 
     <!-- Верхняя панель с уведомлением -->
     <TextView
-        android:id="@+id/tv_notification"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Будильник. Звонок через N метров"
@@ -18,14 +17,12 @@
 
     <!-- RecyclerView для списка будильников -->
     <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recyclerView"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"/>
 
     <!-- Кнопка добавления нового будильника -->
     <ImageButton
-        android:id="@+id/btn_add_alarm"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:src="@android:drawable/ic_input_add"

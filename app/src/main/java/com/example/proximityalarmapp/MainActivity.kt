@@ -5,16 +5,17 @@ package com.example.proximityalarmapp
 // Импорт дял навигации
 // Импорты для MapsForge. Карты, андроид утилиты, офлайн рендерер, и считывание файлов
 import android.content.Intent
-import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.view.View
 import android.widget.ImageButton
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
 import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
+import androidx.lifecycle.lifecycleScope
 import com.google.android.material.navigation.NavigationView
-import org.mapsforge.core.graphics.Bitmap
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.mapsforge.map.android.graphics.AndroidGraphicFactory
 import org.mapsforge.map.android.util.AndroidUtil
 import org.mapsforge.map.android.view.MapView
@@ -58,61 +59,70 @@ class MainActivity : AppCompatActivity() {
             mapView.model.frameBufferModel.overdrawFactor)
 
         //Нахождение файла карты(вшитой в проект)
-        val assetManager = assets
         //Открытие файла карт из папки assets
-        val file = File(cacheDir, "SaratovZone.map")
-        file.outputStream().use { output ->
-            assetManager.open("SaratovZone.map").copyTo(output)
+        lifecycleScope.launch {
+            val file: File
+            withContext(Dispatchers.IO) {
+                file = File(cacheDir, "SaratovZone.map")
+                file.outputStream().use { output ->
+                    assets.open("SaratovZone.map").copyTo(output)
+                }
+            }
+            // После завершения копирования можно продолжить инициализацию карты
+            // Инициализация MapDataStore
+            val mapDataStore: MapDataStore = MapFile(file)
+
+            //Рендеринг слоев в карте
+            val tileRendererLayer = TileRendererLayer(
+                tileCache,
+                mapDataStore,
+                mapView.model.mapViewPosition,
+                false, // isTransparent
+                true, // renderLabels
+                false, // cacheLabels
+                AndroidGraphicFactory.INSTANCE
+            )
+            val renderTheme = object : XmlRenderTheme {
+                private var menuCallback: XmlRenderThemeMenuCallback? = null
+                private var resourceProvider: XmlThemeResourceProvider? = null
+
+                override fun getRelativePathPrefix(): String {
+                    return ""
+                }
+
+                override fun getRenderThemeAsStream(): InputStream {
+
+                    val inputStream: InputStream = File("vtm/default.xml").inputStream()
+                    return inputStream
+                }
+
+                override fun getMenuCallback(): XmlRenderThemeMenuCallback? {
+                    return menuCallback
+                }
+
+                override fun getResourceProvider(): XmlThemeResourceProvider? {
+                    return resourceProvider
+                }
+
+                override fun setMenuCallback(menuCallback: XmlRenderThemeMenuCallback?) {
+                    this.menuCallback = menuCallback
+                }
+
+                override fun setResourceProvider(resourceProvider: XmlThemeResourceProvider?) {
+                    this.resourceProvider = resourceProvider
+                }
+            }
+            // Применение темы к карте
+            tileRendererLayer.setXmlRenderTheme(renderTheme)
+
+            // Добавление слоя в MapView
+            mapView.layerManager.layers.add(tileRendererLayer)
+
         }
-        // Инициализация MapDataStore
-        val mapDataStore: MapDataStore = MapFile(file)
-        //Рендеринг слоев в карте
-        val tileRendererLayer = TileRendererLayer(
-            tileCache,
-            mapDataStore,
-            mapView.model.mapViewPosition,
-            false, // isTransparent
-            true, // renderLabels
-            false, // cacheLabels
-            AndroidGraphicFactory.INSTANCE
-        )
-        val renderTheme = object : XmlRenderTheme {
-            private var menuCallback: XmlRenderThemeMenuCallback? = null
-            private var resourceProvider: XmlThemeResourceProvider? = null
 
-            override fun getRelativePathPrefix(): String {
-                return ""
-            }
-
-            override fun getRenderThemeAsStream(): InputStream {
-                return assets.open("vtm/stylemenu.xml")
-            }
-
-            override fun getMenuCallback(): XmlRenderThemeMenuCallback? {
-                return menuCallback
-            }
-
-            override fun getResourceProvider(): XmlThemeResourceProvider? {
-                return resourceProvider
-            }
-
-            override fun setMenuCallback(menuCallback: XmlRenderThemeMenuCallback?) {
-                this.menuCallback = menuCallback
-            }
-
-            override fun setResourceProvider(resourceProvider: XmlThemeResourceProvider?) {
-                this.resourceProvider = resourceProvider
-            }
-        }
-        // Применение темы к карте
-        tileRendererLayer.setXmlRenderTheme(renderTheme)
-
-        // Добавление слоя в MapView
-        mapView.layerManager.layers.add(tileRendererLayer)
-
-        // Добавление в переменную нарисованного курсора
-        val drawable: Drawable? = ContextCompat.getDrawable(this, R.drawable.marker)
-        //val bitmap: Bitmap = AndroidGraphicFactory.convertToBitmap(drawable)
+//        // Добавление в переменную нарисованного курсора
+//        val drawable: Drawable? = ContextCompat.getDrawable(this, R.drawable.marker)
+//        //val bitmap: Bitmap = AndroidGraphicFactory.convertToBitmap(drawable)
 
         // Поиск элементов в интерфейсе по id
         drawerLayout = findViewById(R.id.drawer_layout)

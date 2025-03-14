@@ -69,4 +69,10 @@ dependencies {
 
         //POI
     implementation(libs.mapsforge.poi)
+    // Kotlin Coroutines
+    implementation (libs.kotlinx.coroutines.core)
+    implementation (libs.kotlinx.coroutines.android)
+
+    // Android Lifecycle (для lifecycleScope)
+    implementation (libs.androidx.lifecycle.runtime.ktx)
 }

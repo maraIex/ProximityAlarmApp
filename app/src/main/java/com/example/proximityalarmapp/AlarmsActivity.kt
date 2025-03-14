@@ -11,7 +11,7 @@ import kotlin.jvm.java
 
 class AlarmsActivity : AppCompatActivity() {
 
-    private lateinit var drawerLayout: DrawerLayout
+    // --Commented out by Inspection (   15.03.25 1:46):private lateinit var drawerLayout: DrawerLayout
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
