@@ -17,6 +17,7 @@ material = "1.10.0"
 activity = "1.10.1"
 constraintlayout = "2.1.4"
 vtm = "Tag"
+vtmAndroidNativesArmeabiV7a = "0.24.0"
 vtmVersion = "listOf(CURRENT-VERSION)"
 
 [libraries]
@@ -45,6 +46,11 @@ androidx-constraintlayout = { group = "androidx.constraintlayout", name = "const
 androidx-drawerlayout = { module = "androidx.drawerlayout:drawerlayout", version = "1.2.0" } # Шторка
 google-material = { module = "com.google.android.material:material", version = "1.9.0" } # Material components (Toolbar, buttons and other)
 vtm = { module = "com.github.mapsforge:vtm", version.ref = "vtm" }
+vtm-android = { module = "org.vtm:vtm-android", version.ref = "vtmAndroidNativesArmeabiV7a" }
+vtm-android-natives-arm64-v8a = { module = "org.vtm:vtm-android-natives-arm64-v8a", version.ref = "vtmAndroidNativesArmeabiV7a" }
+vtm-android-natives-armeabi-v7a = { module = "org.vtm:vtm-android-natives-armeabi-v7a", version.ref = "vtmAndroidNativesArmeabiV7a" }
+vtm-android-natives-x86 = { module = "org.vtm:vtm-android-natives-x86", version.ref = "vtmAndroidNativesArmeabiV7a" }
+vtm-android-natives-x86_x4 = { module = "org.vtm:vtm-android-natives-x86_64", version.ref = "vtmAndroidNativesArmeabiV7a" }
 vtm-themes = { module = "listOf(PACKAGE):vtm-themes", version = "0.24.1" }
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

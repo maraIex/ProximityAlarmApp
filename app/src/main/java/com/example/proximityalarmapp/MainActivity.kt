@@ -7,6 +7,7 @@ package com.example.proximityalarmapp
 import android.content.Intent
 import android.graphics.drawable.Drawable
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.widget.ImageButton
 import androidx.appcompat.app.AppCompatActivity
@@ -15,15 +16,17 @@ import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
 import com.google.android.material.navigation.NavigationView
 import org.mapsforge.core.graphics.Bitmap
-import org.mapsforge.core.model.LatLong
 import org.mapsforge.map.android.graphics.AndroidGraphicFactory
 import org.mapsforge.map.android.util.AndroidUtil
 import org.mapsforge.map.android.view.MapView
 import org.mapsforge.map.datastore.MapDataStore
-import org.mapsforge.map.layer.overlay.Marker
 import org.mapsforge.map.layer.renderer.TileRendererLayer
 import org.mapsforge.map.reader.MapFile
+import org.mapsforge.map.rendertheme.XmlRenderTheme
+import org.mapsforge.map.rendertheme.XmlRenderThemeMenuCallback
+import org.mapsforge.map.rendertheme.XmlThemeResourceProvider
 import java.io.File
+import java.io.InputStream
 
 
 class MainActivity : AppCompatActivity() {
@@ -32,6 +35,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
 
         //Подключение рендерера
         AndroidGraphicFactory.createInstance(applicationContext)
@@ -57,18 +61,51 @@ class MainActivity : AppCompatActivity() {
         //Нахождение файла карты(вшитой в проект)
         val assetManager = assets
         //Открытие файла карт из папки assets
-        val file = File(cacheDir, "saratovMap.osm")
+        val file = File(cacheDir, "SaratovZone.map")
         file.outputStream().use { output ->
-            assetManager.open("saratovMap.osm").copyTo(output)
+            assetManager.open("SaratovZone.map").copyTo(output)
         }
         // Инициализация MapDataStore
         val mapDataStore: MapDataStore = MapFile(file)
         //Рендеринг слоев в карте
         val tileRendererLayer = TileRendererLayer(tileCache, mapDataStore,
             mapView.model.mapViewPosition, AndroidGraphicFactory.INSTANCE)
+        val renderTheme = object : XmlRenderTheme {
+            private var menuCallback: XmlRenderThemeMenuCallback? = null
+            private var resourceProvider: XmlThemeResourceProvider? = null
 
+            override fun getRelativePathPrefix(): String {
+                return ""
+            }
+
+            override fun getRenderThemeAsStream(): InputStream {
+                return assets.open("vtm/default.xml")
+            }
+
+            override fun getMenuCallback(): XmlRenderThemeMenuCallback? {
+                return menuCallback
+            }
+
+            override fun getResourceProvider(): XmlThemeResourceProvider? {
+                return resourceProvider
+            }
+
+            override fun setMenuCallback(menuCallback: XmlRenderThemeMenuCallback?) {
+                this.menuCallback = menuCallback
+            }
+
+            override fun setResourceProvider(resourceProvider: XmlThemeResourceProvider?) {
+                this.resourceProvider = resourceProvider
+            }
+        }
+        // Применение темы к карте
+        tileRendererLayer.setXmlRenderTheme(renderTheme)
+
+        // Добавление слоя в MapView
+        mapView.layerManager.layers.add(tileRendererLayer)
         //Добавление слоев в наш MapView
         mapView.layerManager.layers.add(tileRendererLayer)
+        Log.d("MainActivity", "TileRendererLayer added to MapView")
 
         // Добавление в переменную нарисованного курсора
         val drawable: Drawable? = ContextCompat.getDrawable(this, R.drawable.marker)
