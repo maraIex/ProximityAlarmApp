@@ -7,7 +7,6 @@ package com.example.proximityalarmapp
 import android.content.Intent
 import android.graphics.drawable.Drawable
 import android.os.Bundle
-import android.util.Log
 import android.view.View
 import android.widget.ImageButton
 import androidx.appcompat.app.AppCompatActivity
@@ -68,8 +67,15 @@ class MainActivity : AppCompatActivity() {
         // Инициализация MapDataStore
         val mapDataStore: MapDataStore = MapFile(file)
         //Рендеринг слоев в карте
-        val tileRendererLayer = TileRendererLayer(tileCache, mapDataStore,
-            mapView.model.mapViewPosition, AndroidGraphicFactory.INSTANCE)
+        val tileRendererLayer = TileRendererLayer(
+            tileCache,
+            mapDataStore,
+            mapView.model.mapViewPosition,
+            false, // isTransparent
+            true, // renderLabels
+            false, // cacheLabels
+            AndroidGraphicFactory.INSTANCE
+        )
         val renderTheme = object : XmlRenderTheme {
             private var menuCallback: XmlRenderThemeMenuCallback? = null
             private var resourceProvider: XmlThemeResourceProvider? = null
@@ -79,7 +85,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             override fun getRenderThemeAsStream(): InputStream {
-                return assets.open("vtm/default.xml")
+                return assets.open("vtm/stylemenu.xml")
             }
 
             override fun getMenuCallback(): XmlRenderThemeMenuCallback? {
@@ -103,13 +109,10 @@ class MainActivity : AppCompatActivity() {
 
         // Добавление слоя в MapView
         mapView.layerManager.layers.add(tileRendererLayer)
-        //Добавление слоев в наш MapView
-        mapView.layerManager.layers.add(tileRendererLayer)
-        Log.d("MainActivity", "TileRendererLayer added to MapView")
 
         // Добавление в переменную нарисованного курсора
         val drawable: Drawable? = ContextCompat.getDrawable(this, R.drawable.marker)
-        val bitmap: Bitmap = AndroidGraphicFactory.convertToBitmap(drawable)
+        //val bitmap: Bitmap = AndroidGraphicFactory.convertToBitmap(drawable)
 
         // Поиск элементов в интерфейсе по id
         drawerLayout = findViewById(R.id.drawer_layout)
