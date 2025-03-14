@@ -6,6 +6,7 @@ package com.example.proximityalarmapp
 // Импорты для MapsForge. Карты, андроид утилиты, офлайн рендерер, и считывание файлов
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.widget.ImageButton
 import androidx.appcompat.app.AppCompatActivity
@@ -13,9 +14,7 @@ import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.navigation.NavigationView
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import org.mapsforge.map.android.graphics.AndroidGraphicFactory
 import org.mapsforge.map.android.util.AndroidUtil
 import org.mapsforge.map.android.view.MapView
@@ -25,6 +24,8 @@ import org.mapsforge.map.reader.MapFile
 import org.mapsforge.map.rendertheme.XmlRenderTheme
 import org.mapsforge.map.rendertheme.XmlRenderThemeMenuCallback
 import org.mapsforge.map.rendertheme.XmlThemeResourceProvider
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 import java.io.File
 import java.io.InputStream
 
@@ -91,9 +92,7 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 override fun getRenderThemeAsStream(): InputStream {
-
-                    val inputStream: InputStream = File("vtm/default.xml").inputStream()
-                    return inputStream
+                    return this@MainActivity.assets.open("vtm/default.xml")
                 }
 
                 override fun getMenuCallback(): XmlRenderThemeMenuCallback? {
