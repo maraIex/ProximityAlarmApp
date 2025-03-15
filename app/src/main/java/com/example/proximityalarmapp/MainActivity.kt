@@ -6,7 +6,6 @@ package com.example.proximityalarmapp
 // Импорты для MapsForge. Карты, андроид утилиты, офлайн рендерер, и считывание файлов
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
 import android.view.View
 import android.widget.ImageButton
 import androidx.appcompat.app.AppCompatActivity
@@ -28,7 +27,6 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 import java.io.File
 import java.io.InputStream
-
 
 class MainActivity : AppCompatActivity() {
 
@@ -59,8 +57,7 @@ class MainActivity : AppCompatActivity() {
             mapView.model.displayModel.tileSize, 1f,
             mapView.model.frameBufferModel.overdrawFactor)
 
-        //Нахождение файла карты(вшитой в проект)
-        //Открытие файла карт из папки assets
+        //Открытие файла карт из папки assets с помощью корутины, поскольку кеширование карты - длительный процесс
         lifecycleScope.launch {
             val file: File
             withContext(Dispatchers.IO) {
@@ -69,20 +66,21 @@ class MainActivity : AppCompatActivity() {
                     assets.open("SaratovZone.map").copyTo(output)
                 }
             }
-            // После завершения копирования можно продолжить инициализацию карты
+
             // Инициализация MapDataStore
             val mapDataStore: MapDataStore = MapFile(file)
 
-            //Рендеринг слоев в карте
+            //Рендеринг слоя в карте
             val tileRendererLayer = TileRendererLayer(
                 tileCache,
                 mapDataStore,
                 mapView.model.mapViewPosition,
                 false, // isTransparent
-                true, // renderLabels
+                true,  // renderLabels
                 false, // cacheLabels
                 AndroidGraphicFactory.INSTANCE
             )
+            //Реализация 5 обязательных интерфейсов, из которых реально используется только getRenderThemeAsStream
             val renderTheme = object : XmlRenderTheme {
                 private var menuCallback: XmlRenderThemeMenuCallback? = null
                 private var resourceProvider: XmlThemeResourceProvider? = null
@@ -92,6 +90,7 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 override fun getRenderThemeAsStream(): InputStream {
+                    // загрузка темы из файла
                     return this@MainActivity.assets.open("vtm/default.xml")
                 }
 
@@ -111,12 +110,16 @@ class MainActivity : AppCompatActivity() {
                     this.resourceProvider = resourceProvider
                 }
             }
+            //Центрирование карты и установка стратового положения( пока в центре карты, но потом будет в зависимости от гео
+            val boundingBox = mapDataStore.boundingBox()
+            mapView.model.mapViewPosition.setCenter(boundingBox.centerPoint)
+            mapView.model.mapViewPosition.zoomLevel = 15.toByte()
+
             // Применение темы к карте
             tileRendererLayer.setXmlRenderTheme(renderTheme)
 
             // Добавление слоя в MapView
             mapView.layerManager.layers.add(tileRendererLayer)
-
         }
 
 //        // Добавление в переменную нарисованного курсора
