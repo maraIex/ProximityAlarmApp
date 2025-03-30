@@ -43,6 +43,7 @@ dependencies {
     // Custom dependencies
     implementation(libs.androidx.drawerlayout)
     implementation(libs.google.material)
+    implementation(libs.androidx.cardview) // для карточек CardView в XML
 
     // Basic dependencies
     implementation(libs.androidx.core.ktx)
@@ -50,6 +51,7 @@ dependencies {
     implementation(libs.material)
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
+    implementation(libs.androidx.cardview)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -67,7 +69,7 @@ dependencies {
     implementation(libs.mapsforge.map.android)
     implementation(libs.androidsvg)
 
-        //POI
+    //POI
     implementation(libs.mapsforge.poi)
     // Kotlin Coroutines
     implementation (libs.kotlinx.coroutines.core)

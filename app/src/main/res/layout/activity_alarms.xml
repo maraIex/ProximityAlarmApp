@@ -1,33 +1,132 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical">
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="@color/white">
 
-    <!-- Верхняя панель с уведомлением -->
-    <TextView
+    <!-- Заголовок списка будильников -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Будильник. Звонок через N метров"
-        android:textSize="18sp"
-        android:gravity="center"
-        android:padding="16dp"
-        android:background="#ff9800"
-        android:textColor="#ffffff" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingBottom="8dp">
 
-    <!-- RecyclerView для списка будильников -->
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Список будильников"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:textColor="@color/black"/>
+
+        <ImageButton
+            android:id="@+id/btn_close_list"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/close"
+            android:contentDescription="Закрыть список"/>
+    </LinearLayout>
+
+    <!-- Окно с названием будильника и оставшимся расстоянием -->
+    <androidx.cardview.widget.CardView
+        android:id="@+id/alarm_info_card"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:cardElevation="4dp"
+        app:cardCornerRadius="8dp"
+        android:padding="12dp"
+        android:background="@color/white"
+        android:layout_marginBottom="8dp"
+        android:layout_marginRight="2dp"
+        android:layout_marginLeft="2dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/alarm_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Название будильника"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="@color/black"
+                android:layout_margin="4dp"/>
+
+            <TextView
+                android:id="@+id/alarm_distance"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Звонок через N метров"
+                android:textSize="14sp"
+                android:textColor="@color/gray"
+                android:layout_margin="4dp"/>
+        </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/btn_close_alarm_info"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="end|center"
+            android:layout_margin="4dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/close_circle"
+            android:contentDescription="Закрыть уведомление"/>
+    </androidx.cardview.widget.CardView>
+
+    <!-- Список будильников -->
     <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recycler_alarms"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"/>
+        android:layout_weight="1"
+        android:clipToPadding="false"/>
 
-    <!-- Кнопка добавления нового будильника -->
-    <ImageButton
-        android:layout_width="wrap_content"
+    <!-- Нижние кнопки -->
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:src="@android:drawable/ic_input_add"
-        android:layout_gravity="center"
-        android:contentDescription="Add Alarm"
-        android:background="?android:attr/selectableItemBackground"
-        android:layout_margin="16dp"/>
+        android:orientation="horizontal"
+        android:gravity="bottom|center_horizontal"
+        android:paddingTop="8dp"
+        android:weightSum="3">
+
+        <ImageButton
+            android:id="@+id/btn_edit_alarm"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/btn_edit"
+            android:contentDescription="Редактировать будильник"
+            android:layout_weight="1"
+            android:visibility="gone"/>
+
+        <ImageButton
+            android:id="@+id/btn_add_alarm"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/btn_add"
+            android:contentDescription="Создать будильник"
+            android:layout_weight="1"/>
+
+        <ImageButton
+            android:id="@+id/btn_delete_alarm"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/btn_delete"
+            android:contentDescription="Удалить будильник"
+            android:layout_weight="1"
+            android:visibility="gone"/>
+    </LinearLayout>
+
 </LinearLayout>

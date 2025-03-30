@@ -21,6 +21,7 @@ constraintlayout = "2.2.1"
 vtm = "Tag"
 vtmAndroidNativesArmeabiV7a = "0.24.0"
 vtmVersion = "listOf(CURRENT-VERSION)"
+cardview = "1.0.0"
 
 [libraries]
 # Basic libraries
@@ -61,6 +62,7 @@ vtm-android-natives-armeabi-v7a = { module = "org.vtm:vtm-android-natives-armeab
 vtm-android-natives-x86 = { module = "org.vtm:vtm-android-natives-x86", version.ref = "vtmAndroidNativesArmeabiV7a" }
 vtm-android-natives-x86_x4 = { module = "org.vtm:vtm-android-natives-x86_64", version.ref = "vtmAndroidNativesArmeabiV7a" }
 vtm-themes = { module = "listOf(PACKAGE):vtm-themes", version = "0.24.1" }
+androidx-cardview = { group = "androidx.cardview", name = "cardview", version.ref = "cardview" }
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
