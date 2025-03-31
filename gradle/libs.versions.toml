@@ -1,28 +1,68 @@
 [versions]
 agp = "8.9.0"
+androidsvg = "1.4"
+artifactid = "version"
+githubVtm = "0.24.0"
 kotlin = "2.0.21"
 coreKtx = "1.15.0"
 junit = "4.13.2"
 junitVersion = "1.2.1"
 espressoCore = "3.6.1"
-appcompat = "1.6.1"
-material = "1.10.0"
+appcompat = "1.7.0"
+kotlinxCoroutinesCore = "1.7.3"
+lifecycleRuntimeKtx = "2.8.7"
+mapsforgeCore = "0.24.1"
+mapsforgeMapAndroid = "0.24.1"
+mapsforgeThemes = "0.24.1"
+mapsforgeThemesVersion = "0.24.1"
+material = "1.12.0"
 activity = "1.10.1"
-constraintlayout = "2.1.4"
+constraintlayout = "2.2.1"
+vtm = "Tag"
+vtmAndroidNativesArmeabiV7a = "0.24.0"
+vtmVersion = "listOf(CURRENT-VERSION)"
+cardview = "1.0.0"
 
 [libraries]
 # Basic libraries
+androidsvg = { module = "com.caverock:androidsvg", version.ref = "androidsvg" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+androidx-lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
+artifactid = { module = "groupId:artifactId", version.ref = "artifactid" }
+github-vtm = { module = "com.github.mapsforge.vtm:vtm", version.ref = "githubVtm" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
+kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "kotlinxCoroutinesCore" }
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutinesCore" }
+listof_package_z-vtm = { module = "listOf(PACKAGE):vtm", version.ref = "vtmVersion" }
+mapsforge-core = { module = "com.github.mapsforge.mapsforge:mapsforge-core", version.ref = "mapsforgeCore" }
+mapsforge-map = { module = "org.mapsforge:mapsforge-map", version.ref = "mapsforgeMapAndroid" }
+mapsforge-map-android = { module = "org.mapsforge:mapsforge-map-android", version.ref = "mapsforgeMapAndroid" }
+mapsforge-mapsforge-core = { module = "org.mapsforge:mapsforge-core", version.ref = "mapsforgeMapAndroid" }
+mapsforge-map-reader = { module = "org.mapsforge:mapsforge-map-reader", version.ref = "mapsforgeMapAndroid" }
+mapsforge-poi = { module = "org.mapsforge:mapsforge-poi", version.ref = "mapsforgeMapAndroid" }
+#noinspection SimilarGradleDependency
+mapsforge-themes = { module = "org.mapsforge:mapsforge-themes", version = "0.24.1" }
+#noinspection SimilarGradleDependency
+mapsforge-themes-v080 = { module = "org.mapsforge:mapsforge-themes", version.ref = "mapsforgeThemesVersion" }
+#noinspection SimilarGradleDependency
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 androidx-activity = { group = "androidx.activity", name = "activity", version.ref = "activity" }
 androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
 # Custom libraries
 androidx-drawerlayout = { module = "androidx.drawerlayout:drawerlayout", version = "1.2.0" } # Шторка
-google-material = { module = "com.google.android.material:material", version = "1.9.0" } # Material components (Toolbar, buttons and other)
+#noinspection SimilarGradleDependency
+google-material = { module = "com.google.android.material:material", version = "1.12.0" } # Material components (Toolbar, buttons and other)
+vtm = { module = "com.github.mapsforge:vtm", version.ref = "vtm" }
+vtm-android = { module = "org.vtm:vtm-android", version.ref = "vtmAndroidNativesArmeabiV7a" }
+vtm-android-natives-arm64-v8a = { module = "org.vtm:vtm-android-natives-arm64-v8a", version.ref = "vtmAndroidNativesArmeabiV7a" }
+vtm-android-natives-armeabi-v7a = { module = "org.vtm:vtm-android-natives-armeabi-v7a", version.ref = "vtmAndroidNativesArmeabiV7a" }
+vtm-android-natives-x86 = { module = "org.vtm:vtm-android-natives-x86", version.ref = "vtmAndroidNativesArmeabiV7a" }
+vtm-android-natives-x86_x4 = { module = "org.vtm:vtm-android-natives-x86_64", version.ref = "vtmAndroidNativesArmeabiV7a" }
+vtm-themes = { module = "listOf(PACKAGE):vtm-themes", version = "0.24.1" }
+androidx-cardview = { group = "androidx.cardview", name = "cardview", version.ref = "cardview" }
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }

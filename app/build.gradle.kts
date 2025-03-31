@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    id("kotlin-kapt")
 }
 
 android {
@@ -33,19 +34,47 @@ android {
     kotlinOptions {
         jvmTarget = "11"
     }
+    buildFeatures{
+        dataBinding = true
+    }
 }
 
 dependencies {
     // Custom dependencies
     implementation(libs.androidx.drawerlayout)
     implementation(libs.google.material)
+    implementation(libs.androidx.cardview) // для карточек CardView в XML
+
     // Basic dependencies
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
+    implementation(libs.androidx.cardview)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+
+    // JitPack
+    implementation(libs.github.vtm)
+
+    //MapsForge
+        // Maps
+    implementation(libs.mapsforge.mapsforge.core)
+    implementation(libs.mapsforge.map)
+    implementation(libs.mapsforge.map.reader)
+    implementation(libs.mapsforge.themes)
+    // Android
+    implementation(libs.mapsforge.map.android)
+    implementation(libs.androidsvg)
+
+    //POI
+    implementation(libs.mapsforge.poi)
+    // Kotlin Coroutines
+    implementation (libs.kotlinx.coroutines.core)
+    implementation (libs.kotlinx.coroutines.android)
+
+    // Android Lifecycle (для lifecycleScope)
+    implementation (libs.androidx.lifecycle.runtime.ktx)
 }
