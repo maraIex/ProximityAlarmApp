@@ -188,30 +188,6 @@ class MainActivity : AppCompatActivity() {
                 }
                 false
             }
-
-//            mapView.setOnTouchListener { _, event ->
-//                when (event.action) {
-//                    MotionEvent.ACTION_DOWN -> {
-//                        isLongPressTriggered = false
-//                        longPressHandler.postDelayed({
-//                            isLongPressTriggered = true
-//
-//                            // Получаем координаты касания
-//                            val tappedLatLong = mapView.mapViewProjection.fromPixels(
-//                                event.x.toDouble(), event.y.toDouble()
-//                            )
-//
-//                            showAddMarkerDialog(tappedLatLong)
-//                            mapView.invalidate()
-//                        }, 600) // Время долгого нажатия (600 мс)
-//                    }
-//
-//                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-//                        longPressHandler.removeCallbacksAndMessages(null)
-//                    }
-//                }
-//                false
-//            }
         }
 
         // Тестовый маркер
@@ -255,9 +231,16 @@ class MainActivity : AppCompatActivity() {
             .setPositiveButton("Добавить") { _, _ ->
                 val marker = createInteractiveMarker(this, latLong, mapView)
                 mapView.layerManager.layers.add(marker)
-                println("Маркер добавлен, количество слоёв: ${mapView.layerManager.layers.size()}")
-                println("Координаты: ${marker.latLong}")
+                //println("Маркер добавлен, количество слоёв: ${mapView.layerManager.layers.size()}") был для дебага, остался для уверенности
+                //println("Координаты: ${marker.latLong}") братишка для дебага
                 mapView.invalidate()
+
+                // Переход на NewAlarmActivity с передачей координат
+                val intent = Intent(this, NewAlarmActivity::class.java).apply {
+                    putExtra("LATITUDE", latLong.latitude)
+                    putExtra("LONGITUDE", latLong.longitude)
+                }
+                startActivity(intent)
             }
             .setNegativeButton("Отмена", null)
             .show()
