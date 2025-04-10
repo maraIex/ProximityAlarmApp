@@ -40,5 +40,9 @@ object AlarmRepository {
         alarmList.remove(alarm)
         alarmsLiveData.value = alarmList.toList()
     }
+
+    fun saveAlarms() {
+        TODO("Сохранить будильники")
+    }
 }
 

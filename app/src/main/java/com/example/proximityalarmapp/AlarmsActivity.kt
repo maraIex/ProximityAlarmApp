@@ -13,8 +13,6 @@ import kotlin.jvm.java
 
 class AlarmsActivity : AppCompatActivity() {
 
-    // --Commented out by Inspection (   15.03.25 1:46):private lateinit var drawerLayout: DrawerLayout
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_alarms)
@@ -22,6 +20,7 @@ class AlarmsActivity : AppCompatActivity() {
         val btn_close : ImageButton = findViewById(R.id.btn_close_list)
         val closeButton = findViewById<ImageButton>(R.id.btn_close_alarm_info)
         val alarmCard = findViewById<CardView>(R.id.alarm_info_card)
+        val addButton = findViewById<ImageButton>(R.id.btn_add_alarm)
 
         btn_close.setOnClickListener { finish() }
 
@@ -36,5 +35,10 @@ class AlarmsActivity : AppCompatActivity() {
                 .start()
         }
         // alarmCard.visibility = View.VISIBLE когда надо будет снова показать это окно
+
+        addButton.setOnClickListener {
+            val intent = Intent(this, NewAlarmActivity::class.java)
+            startActivity(intent)
+        }
     }
 }

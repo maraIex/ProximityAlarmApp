@@ -67,6 +67,17 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        //
+        if (intent?.getBooleanExtra("SELECT_LOCATION", false) == true) {
+            // Режим выбора местоположения
+            val currentLat = intent.getDoubleExtra("CURRENT_LAT", 0.0)
+            val currentLon = intent.getDoubleExtra("CURRENT_LON", 0.0)
+            showLocationSelectionMode(currentLat, currentLon)
+            return
+        }
+
+        handleIntent(intent)
+
         //Подключение рендерера
         AndroidGraphicFactory.createInstance(applicationContext)
 
@@ -216,6 +227,21 @@ class MainActivity : AppCompatActivity() {
                 else -> false
             }
         }
+    }
+
+    private fun handleIntent(intent: Intent?) {
+        if (intent?.getBooleanExtra("SELECT_LOCATION", false) == true) {
+            // Режим выбора местоположения
+            val currentLat = intent.getDoubleExtra("CURRENT_LAT", 0.0)
+            val currentLon = intent.getDoubleExtra("CURRENT_LON", 0.0)
+
+            // Показать карту с возможностью выбора метки
+            showLocationSelectionMode(currentLat, currentLon)
+        }
+    }
+
+    private fun showLocationSelectionMode(currentLat: Double, currentLon: Double) {
+        TODO("Здесь реализовать логику показа карты в режиме выбора метки")
     }
 
     private fun showAddMarkerDialog(latLong: LatLong) {
