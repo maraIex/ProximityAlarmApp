@@ -19,6 +19,7 @@
             android:paddingTop="16dp">
 
             <TextView
+                android:id="@+id/text_cancel"
                 android:text="Отмена"
                 android:textColor="@color/blue"
                 android:layout_width="wrap_content"

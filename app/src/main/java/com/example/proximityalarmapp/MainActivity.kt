@@ -144,7 +144,7 @@ class MainActivity : AppCompatActivity() {
             }
             //Центрирование карты и установка стратового положения( пока в центре карты, но потом будет в зависимости от гео)
             val boundingBox = mapDataStore.boundingBox()
-            mapView.model.mapViewPosition.setCenter(boundingBox.centerPoint)
+            mapView.model.mapViewPosition.setCenter(LatLong(51.52964, 45.98008))
             mapView.model.mapViewPosition.zoomLevel = 15.toByte()
 
             // Применение темы к карте
@@ -189,12 +189,6 @@ class MainActivity : AppCompatActivity() {
                 false
             }
         }
-
-        // Тестовый маркер
-        //val bitmap = AndroidBitmap(BitmapFactory.decodeResource(resources, R.drawable.marker))
-        //val marker = Marker(LatLong(51.602578, 46.007720), bitmap, 0, -bitmap.height / 2)
-        //mapView.layerManager.layers.add(marker)
-        //mapView.invalidate()
 
         // Поиск элементов в интерфейсе по id
         drawerLayout = findViewById(R.id.drawer_layout)
