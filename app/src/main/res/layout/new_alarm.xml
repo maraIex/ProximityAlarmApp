@@ -34,6 +34,7 @@
                 android:layout_height="wrap_content"/>
 
             <TextView
+                android:id="@+id/text_save"
                 android:text="Сохранить"
                 android:textColor="@color/blue"
                 android:layout_width="wrap_content"
@@ -80,20 +81,48 @@
             android:layout_height="wrap_content"
             android:entries="@array/radius_values"/>
 
+        <!-- Поле для ручного ввода радиуса -->
+        <LinearLayout
+            android:orientation="horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center_vertical">
+
+            <EditText
+                android:id="@+id/radius_edit"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:inputType="number"
+                android:hint="Или введите свой радиус"
+                android:imeOptions="actionDone"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="м"
+                android:layout_marginLeft="8dp"
+                android:gravity="center_vertical"/>
+        </LinearLayout>
+
         <!-- Переключатели -->
         <Switch
+            android:id="@+id/one_time_switch"
             android:text="Один звуковой сигнал"
             android:layout_marginTop="12dp"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"/>
 
         <Switch
+            android:id="@+id/weekdays_switch"
             android:text="По будням"
             android:layout_marginTop="6dp"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"/>
 
         <Switch
+            android:id="@+id/weekends_switch"
             android:text="По выходным"
             android:layout_marginTop="6dp"
             android:layout_width="match_parent"
@@ -107,30 +136,37 @@
             android:layout_height="wrap_content">
 
             <CheckBox
+                android:id="@+id/checkbox_monday"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Понедельник" />
             <CheckBox
+                android:id="@+id/checkbox_tuesday"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Вторник" />
             <CheckBox
+                android:id="@+id/checkbox_wednesday"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Среда" />
             <CheckBox
+                android:id="@+id/checkbox_thursday"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Четверг" />
             <CheckBox
+                android:id="@+id/checkbox_friday"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Пятница" />
             <CheckBox
+                android:id="@+id/checkbox_saturday"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Суббота" />
             <CheckBox
+                android:id="@+id/checkbox_sunday"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Воскресенье" />
@@ -172,14 +208,17 @@
             android:layout_height="wrap_content">
 
             <CheckBox
+                android:id="@+id/vibration_checkbox"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Вибрация" />
             <CheckBox
+                android:id="@+id/sound_checkbox"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Звуковой сигнал" />
             <CheckBox
+                android:id="@+id/notification_checkbox"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Уведомление" />
@@ -199,6 +238,7 @@
                 android:src="@drawable/sound_on" />
 
             <SeekBar
+                android:id="@+id/volume_seekbar"
                 android:layout_gravity="center_horizontal"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
