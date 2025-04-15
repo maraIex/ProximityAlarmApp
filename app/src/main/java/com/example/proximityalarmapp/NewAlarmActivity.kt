@@ -31,6 +31,8 @@ class NewAlarmActivity : AppCompatActivity() {
     private lateinit var weekdaysSwitch : Switch
     private lateinit var oneTimeSwitch : Switch
 
+    private lateinit var title_edit : EditText
+
     // launcher для отслеживания переходов
     private lateinit var locationSelectionLauncher: ActivityResultLauncher<Intent>
 
@@ -40,6 +42,24 @@ class NewAlarmActivity : AppCompatActivity() {
 
         // Инициализация AlarmViewModel
         viewModel = ViewModelProvider(this, AlarmViewModelFactory())[AlarmViewModel::class.java]
+
+        textCoords = findViewById<TextView>(R.id.text_coords)
+        textSelectLocation = findViewById<TextView>(R.id.text_select_location)
+
+        title_edit = findViewById<EditText>(R.id.title_edit)
+
+        weekdaysSwitch = findViewById<Switch>(R.id.weekdays_switch)
+        weekendsSwitch = findViewById<Switch>(R.id.weekends_switch)
+
+        oneTimeSwitch = findViewById<Switch>(R.id.one_time_switch)
+
+        // Обработка координат (если они передавались)
+        val latitude = intent?.getDoubleExtra("LATITUDE", 0.0) ?: 0.0
+        val longitude = intent?.getDoubleExtra("LONGITUDE", 0.0) ?: 0.0
+        if (latitude != 0.0 || longitude != 0.0) {
+            viewModel.updateLocation(LatLong(latitude, longitude))
+            updateLocationText(LatLong(latitude, longitude))
+        }
 
         // Инициализируем launcher
         locationSelectionLauncher = registerForActivityResult(
@@ -57,17 +77,6 @@ class NewAlarmActivity : AppCompatActivity() {
             }
         }
 
-        // Получение координат из интента
-        val latitude = intent.getDoubleExtra("LATITUDE", 0.0)
-        val longitude = intent.getDoubleExtra("LONGITUDE", 0.0)
-
-        textCoords = findViewById<TextView>(R.id.text_coords)
-        textSelectLocation = findViewById<TextView>(R.id.text_select_location)
-
-        weekdaysSwitch = findViewById<Switch>(R.id.weekdays_switch)
-        weekendsSwitch = findViewById<Switch>(R.id.weekends_switch)
-
-        oneTimeSwitch = findViewById<Switch>(R.id.one_time_switch)
         // Наблюдаем за изменениями location в ViewModel
         viewModel.location.observe(this) { location ->
             if (location != null && (location.latitude != 0.0 || location.longitude != 0.0)) {
@@ -135,7 +144,6 @@ class NewAlarmActivity : AppCompatActivity() {
             }
         }
 
-        val title_edit : EditText = findViewById<EditText>(R.id.title_edit)
         title_edit.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable?) {
                 viewModel.updateTitle(s?.toString() ?: "")
@@ -270,12 +278,41 @@ class NewAlarmActivity : AppCompatActivity() {
     private fun openMapForLocationSelection() {
         val intent = Intent(this, MainActivity::class.java).apply {
             putExtra("SELECT_LOCATION", true)
-            // Передаём текущие координаты, если они есть
-            viewModel.location.value?.let {
-                putExtra("CURRENT_LAT", it.latitude)
-                putExtra("CURRENT_LON", it.longitude)
+
+            // Сохраняем текущие настройки в Bundle
+            val alarmData = Bundle().apply {
+                putString("title", title_edit.text.toString())
+
+                val radiusFromEditText = findViewById<EditText>(R.id.radius_edit).text.toString().toFloatOrNull()
+                val radiusFromViewModel = viewModel.radius.value
+
+                val finalRadius = when {
+                    radiusFromEditText != null -> radiusFromEditText
+                    radiusFromViewModel != null && radiusFromViewModel != 0f -> radiusFromViewModel
+                    else -> 100f
+                }
+
+                putFloat("radius", finalRadius)
+
+                putBoolean("oneTime", oneTimeSwitch.isChecked)
+                putBoolean("weekdays", weekdaysSwitch.isChecked)
+                putBoolean("weekends", weekendsSwitch.isChecked)
+
+                putBoolean("monday", findViewById<CheckBox>(R.id.checkbox_monday).isChecked)
+                putBoolean("tuesday", findViewById<CheckBox>(R.id.checkbox_tuesday).isChecked)
+                putBoolean("wednesday", findViewById<CheckBox>(R.id.checkbox_wednesday).isChecked)
+                putBoolean("thursday", findViewById<CheckBox>(R.id.checkbox_thursday).isChecked)
+                putBoolean("friday", findViewById<CheckBox>(R.id.checkbox_friday).isChecked)
+                putBoolean("saturday", findViewById<CheckBox>(R.id.checkbox_saturday).isChecked)
+                putBoolean("sunday", findViewById<CheckBox>(R.id.checkbox_sunday).isChecked)
+
+                putBoolean("vibration", findViewById<CheckBox>(R.id.vibration_checkbox).isChecked)
+                putBoolean("sound", findViewById<CheckBox>(R.id.sound_checkbox).isChecked)
+                putBoolean("notification", findViewById<CheckBox>(R.id.notification_checkbox).isChecked)
+
+                putInt("volume", findViewById<SeekBar>(R.id.volume_seekbar).progress)
             }
-            flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+            putExtra("ALARM_DATA", alarmData)
         }
         locationSelectionLauncher.launch(intent)
     }

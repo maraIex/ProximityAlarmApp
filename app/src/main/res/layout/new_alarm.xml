@@ -129,42 +129,50 @@
             android:layout_height="wrap_content"/>
 
         <!-- Дни недели -->
+
+        <!-- Временной интервал -->
         <LinearLayout
-            android:orientation="vertical"
-            android:layout_marginTop="8dp"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content">
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="vertical">
 
             <CheckBox
                 android:id="@+id/checkbox_monday"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Понедельник" />
+
             <CheckBox
                 android:id="@+id/checkbox_tuesday"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Вторник" />
+
             <CheckBox
                 android:id="@+id/checkbox_wednesday"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Среда" />
+
             <CheckBox
                 android:id="@+id/checkbox_thursday"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Четверг" />
+
             <CheckBox
                 android:id="@+id/checkbox_friday"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Пятница" />
+
             <CheckBox
                 android:id="@+id/checkbox_saturday"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Суббота" />
+
             <CheckBox
                 android:id="@+id/checkbox_sunday"
                 android:layout_width="wrap_content"
@@ -172,7 +180,6 @@
                 android:text="Воскресенье" />
         </LinearLayout>
 
-        <!-- Временной интервал -->
         <TextView
             android:text="Временной интервал"
             android:textStyle="bold"

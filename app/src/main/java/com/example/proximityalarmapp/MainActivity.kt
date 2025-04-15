@@ -72,7 +72,7 @@ class MainActivity : AppCompatActivity() {
             // Режим выбора местоположения
             val currentLat = intent.getDoubleExtra("CURRENT_LAT", 0.0)
             val currentLon = intent.getDoubleExtra("CURRENT_LON", 0.0)
-            showLocationSelectionMode(currentLat, currentLon)
+            showLocationSelectionMode()
             return
         }
 
@@ -236,12 +236,12 @@ class MainActivity : AppCompatActivity() {
             val currentLon = intent.getDoubleExtra("CURRENT_LON", 0.0)
 
             // Показать карту с возможностью выбора метки
-            showLocationSelectionMode(currentLat, currentLon)
+            showLocationSelectionMode()
         }
     }
 
-    private fun showLocationSelectionMode(currentLat: Double, currentLon: Double) {
-        TODO("Здесь реализовать логику показа карты в режиме выбора метки")
+    private fun showLocationSelectionMode() {
+        TODO("Сделать по кайфу")
     }
 
     private fun showAddMarkerDialog(latLong: LatLong) {
