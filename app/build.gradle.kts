@@ -35,6 +35,7 @@ android {
         jvmTarget = "11"
     }
     buildFeatures{
+        viewBinding=true
         dataBinding = true
     }
 }
@@ -77,4 +78,7 @@ dependencies {
 
     // Android Lifecycle (для lifecycleScope)
     implementation (libs.androidx.lifecycle.runtime.ktx)
+
+    // Fused Location API
+    implementation(libs.play.services.location)
 }
