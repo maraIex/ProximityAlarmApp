@@ -4,6 +4,7 @@ package com.example.proximityalarmapp
 // Импорт для биндингов
 // Импорт дял навигации
 // Импорты для MapsForge. Карты, андроид утилиты, офлайн рендерер, и считывание файлов
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.graphics.BitmapFactory
@@ -39,6 +40,8 @@ import org.mapsforge.map.rendertheme.XmlThemeResourceProvider
 import org.mapsforge.map.android.graphics.AndroidBitmap
 import org.mapsforge.map.layer.overlay.Marker
 import androidx.appcompat.app.AlertDialog
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
 import kotlinx.coroutines.awaitAll
 import org.mapsforge.core.model.Point
 import org.mapsforge.core.util.MercatorProjection
@@ -48,6 +51,7 @@ import kotlin.Boolean
 
 class MainActivity : AppCompatActivity() {
 
+
     private lateinit var drawerLayout: DrawerLayout
     // Создание объекта AlarmViewModel при загрузке MainActivity
     private val alarmViewModel: AlarmViewModel = AlarmViewModel(AlarmRepository)
@@ -55,6 +59,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var mapView: MapView
     // Флаг окончания загрузки карты
     private var isMapReady = false
+
+    private lateinit var fusedLocationClient: FusedLocationProviderClient
 
     // Обработчик долгого касания
     private val longPressHandler = Handler(Looper.getMainLooper())
@@ -64,6 +70,9 @@ class MainActivity : AppCompatActivity() {
     private var isMarkerTouched = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
+
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
@@ -156,7 +165,8 @@ class MainActivity : AppCompatActivity() {
             // Карта готова к взаимодействию
             isMapReady = true
 
-            mapView.setOnTouchListener { _, event ->
+            @SuppressLint("ClickableViewAccessibility")
+            mapView.setOnTouchListener { view, event ->
                 when (event.action) {
                     MotionEvent.ACTION_DOWN -> {
                         isLongPressTriggered = false
@@ -167,27 +177,29 @@ class MainActivity : AppCompatActivity() {
                                 mapView
                             )
                         }
-
                         if (!isMarkerTouched) {
                             longPressHandler.postDelayed({
                                 isLongPressTriggered = true
-
                                 val tappedLatLong = mapView.mapViewProjection.fromPixels(
                                     event.x.toDouble(), event.y.toDouble()
                                 )
-
                                 showAddMarkerDialog(tappedLatLong)
-                                mapView.invalidate()
                             }, 600)
                         }
                     }
-
-                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    MotionEvent.ACTION_UP -> {
+                        longPressHandler.removeCallbacksAndMessages(null)
+                        if (!isLongPressTriggered && !isMarkerTouched) {
+                            view.performClick() // ✅ Вызов при обычном клике
+                        }
+                    }
+                    MotionEvent.ACTION_CANCEL -> {
                         longPressHandler.removeCallbacksAndMessages(null)
                     }
                 }
                 false
             }
+
 
 //            mapView.setOnTouchListener { _, event ->
 //                when (event.action) {
