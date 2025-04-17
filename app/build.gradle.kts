@@ -10,7 +10,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.proximityalarmapp"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
@@ -75,10 +75,15 @@ dependencies {
     // Kotlin Coroutines
     implementation (libs.kotlinx.coroutines.core)
     implementation (libs.kotlinx.coroutines.android)
+    implementation(libs.kotlinx.coroutines.play.services)
 
     // Android Lifecycle (для lifecycleScope)
     implementation (libs.androidx.lifecycle.runtime.ktx)
 
     // Fused Location API
     implementation(libs.play.services.location)
+    // Асинхронные процессы
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.work.multiprocess)
+
 }

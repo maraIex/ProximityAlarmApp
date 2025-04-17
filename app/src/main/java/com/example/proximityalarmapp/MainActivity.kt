@@ -1,23 +1,20 @@
 package com.example.proximityalarmapp
 
-//Бибилиотек для рисования маркера на карте
-// Импорт для биндингов
-// Импорт дял навигации
-// Импорты для MapsForge. Карты, андроид утилиты, офлайн рендерер, и считывание файлов
+import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
-import android.graphics.drawable.BitmapDrawable
-import android.graphics.drawable.Drawable
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import android.widget.ImageButton
 import android.widget.Toast
-import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.GravityCompat
@@ -40,17 +37,22 @@ import org.mapsforge.map.rendertheme.XmlThemeResourceProvider
 import org.mapsforge.map.android.graphics.AndroidBitmap
 import org.mapsforge.map.layer.overlay.Marker
 import androidx.appcompat.app.AlertDialog
-import com.google.android.gms.location.FusedLocationProviderClient
-import com.google.android.gms.location.LocationServices
-import kotlinx.coroutines.awaitAll
+import androidx.core.app.ActivityCompat
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
 import org.mapsforge.core.model.Point
-import org.mapsforge.core.util.MercatorProjection
 import java.io.File
 import java.io.InputStream
+import java.util.concurrent.TimeUnit
 import kotlin.Boolean
 
 class MainActivity : AppCompatActivity() {
 
+    companion object {
+        private const val LOCATION_PERMISSION_REQUEST = 100
+        private const val TAG = "MainActivity"
+    }
 
     private lateinit var drawerLayout: DrawerLayout
     // Создание объекта AlarmViewModel при загрузке MainActivity
@@ -60,7 +62,6 @@ class MainActivity : AppCompatActivity() {
     // Флаг окончания загрузки карты
     private var isMapReady = false
 
-    private lateinit var fusedLocationClient: FusedLocationProviderClient
 
     // Обработчик долгого касания
     private val longPressHandler = Handler(Looper.getMainLooper())
@@ -70,10 +71,17 @@ class MainActivity : AppCompatActivity() {
     private var isMarkerTouched = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
-
-        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
-
         super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        //Запуск в фоновом режим
+        if (checkPermissions()) {
+            //Запускаем трекинг с помощью FusedLocationApi
+            startLocationTracking()
+        } else {
+            requestPermissions()
+        }
+
         setContentView(R.layout.activity_main)
 
         //Подключение рендерера
@@ -190,7 +198,7 @@ class MainActivity : AppCompatActivity() {
                     MotionEvent.ACTION_UP -> {
                         longPressHandler.removeCallbacksAndMessages(null)
                         if (!isLongPressTriggered && !isMarkerTouched) {
-                            view.performClick() // ✅ Вызов при обычном клике
+                            view.performClick() // Вызов при обычном клике
                         }
                     }
                     MotionEvent.ACTION_CANCEL -> {
@@ -260,6 +268,141 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    //ОГРОМНЫЙ БЛОК ФУНКЦИЙ ГЕОКОДИНГА
+
+    private fun checkPermissions(): Boolean {
+        val hasFineLocation = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+
+        val hasCoarseLocation = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+
+        // Для Android 10+ нужно фоновое разрешение
+        val hasBackgroundLocation = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_BACKGROUND_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+        } else {
+            true
+        }
+
+        // Для Android 12+ нужно разрешение на точные геозоны
+        val hasPreciseGeofence = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+        } else {
+            true
+        }
+
+        return (hasFineLocation || hasCoarseLocation) && hasBackgroundLocation && hasPreciseGeofence
+    }
+
+    private fun requestPermissions() {
+        val permissionsToRequest = mutableListOf<String>()
+
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED &&
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            permissionsToRequest.add(Manifest.permission.ACCESS_FINE_LOCATION)
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            permissionsToRequest.add(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+        }
+
+        if (permissionsToRequest.isNotEmpty()) {
+            ActivityCompat.requestPermissions(
+                this,
+                permissionsToRequest.toTypedArray(),
+                LOCATION_PERMISSION_REQUEST
+            )
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+
+        if (requestCode == LOCATION_PERMISSION_REQUEST) {
+            if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
+                startLocationTracking()
+            } else {
+                // Обработка отказа от разрешений
+                if (shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_FINE_LOCATION)) {
+                    // Пользователь отклонил, но можно показать объяснение
+                    showPermissionExplanation()
+                } else {
+                    // Пользователь отклонил и поставил "Не спрашивать снова"
+                    Toast.makeText(this, "Для работы приложения необходимы разрешения на местоположение", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    private fun showPermissionExplanation() {
+        AlertDialog.Builder(this)
+            .setTitle("Необходимы разрешения")
+            .setMessage("Приложению нужны разрешения на местоположение для работы геозон")
+            .setPositiveButton("OK") { _, _ -> requestPermissions() }
+            .setNegativeButton("Отмена", null)
+            .show()
+    }
+
+    private fun startLocationTracking() {
+        if (!checkPermissions()) {
+            Log.w(TAG, "Попытка запуска без необходимых разрешений")
+            return
+        }
+        // Запускаем сервис
+        startLocationService()
+        // Запускаем периодическую проверку
+        schedulePeriodicWork()
+    }
+
+    private fun startLocationService() {
+        try {
+            val intent = Intent(this, LocationTrackingService::class.java)
+            startForegroundService(intent)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка при запуске сервиса: ${e.message}")
+        }
+    }
+
+    private fun schedulePeriodicWork() {
+        val workRequest = PeriodicWorkRequestBuilder<LocationCheckWorker>(
+            30, // Интервал в минутах
+            TimeUnit.MINUTES
+        )
+            .setInitialDelay(10, TimeUnit.MINUTES)
+            .addTag(LocationCheckWorker.WORK_TAG)
+            .build()
+
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            "location_check",
+            ExistingPeriodicWorkPolicy.UPDATE, // Обновляем существующую работу
+            workRequest
+        )
+    }
+
+
+
+
     private fun showAddMarkerDialog(latLong: LatLong) {
         AlertDialog.Builder(this)
             .setTitle("Добавить будильник")
@@ -274,7 +417,6 @@ class MainActivity : AppCompatActivity() {
             .setNegativeButton("Отмена", null)
             .show()
     }
-
 
     fun createInteractiveMarker(context: Context, latLong: LatLong, mapView: MapView): Marker {
         // Создаем Bitmap для маркера
@@ -315,4 +457,5 @@ class MainActivity : AppCompatActivity() {
             layer is Marker && layer.latLong == latLong
         }
     }
+
 }
