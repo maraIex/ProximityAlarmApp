@@ -14,6 +14,7 @@ import android.os.Handler
 import android.os.Looper
 import android.view.MotionEvent
 import android.view.View
+import android.widget.TextView
 import android.widget.ImageButton
 import android.widget.Toast
 import androidx.activity.viewModels
@@ -44,39 +45,60 @@ import org.mapsforge.core.model.Point
 import org.mapsforge.core.util.MercatorProjection
 import java.io.File
 import java.io.InputStream
+import android.view.ViewConfiguration
+import android.view.animation.AccelerateDecelerateInterpolator
+import android.view.animation.AnimationUtils
+import androidx.cardview.widget.CardView
 import kotlin.Boolean
+import kotlin.math.abs
+import kotlin.math.pow
+import kotlin.math.sqrt
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var drawerLayout: DrawerLayout
-    // Создание объекта AlarmViewModel при загрузке MainActivity
-    private val alarmViewModel: AlarmViewModel = AlarmViewModel(AlarmRepository)
     // mapView вынесена сюда, потому что нужен доступ к ней вне onCreate
     private lateinit var mapView: MapView
     // Флаг окончания загрузки карты
     private var isMapReady = false
 
     // Обработчик долгого касания
-    private val longPressHandler = Handler(Looper.getMainLooper())
+    private val handler = Handler(Looper.getMainLooper())
     // Флаг сработало ли долгое касание
     private var isLongPressTriggered = false
     // Флаг нажатия на существующий маркер
     private var isMarkerTouched = false
+    // Флаг режима установки метки
+    private var isSelectionMode = false
+
+    // Кнопка переключения режимов
+    private lateinit var btnToggleMode: ImageButton
+    // Текст об установке метки
+    private lateinit var textPlacementContainer: CardView
+    private lateinit var textPlacement: TextView
+
+    // Кнопка шторки
+    private lateinit var btn_drawer: ImageButton
+
+    // Переменные для анимаций
+    val animation_duration = 300L
+    val text_offset = -100f
+    val button_offset = -100f
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        //
-        if (intent?.getBooleanExtra("SELECT_LOCATION", false) == true) {
-            // Режим выбора местоположения
-            val currentLat = intent.getDoubleExtra("CURRENT_LAT", 0.0)
-            val currentLon = intent.getDoubleExtra("CURRENT_LON", 0.0)
-            showLocationSelectionMode()
-            return
-        }
+        // Инициализация кнопки переключения и текста установки
+        btnToggleMode = findViewById(R.id.btn_toggle_mode)
+        textPlacementContainer = findViewById(R.id.text_placement_container)
+        textPlacement = findViewById(R.id.text_placement)
 
-        handleIntent(intent)
+        drawerLayout = findViewById(R.id.drawer_layout)
+        btn_drawer = findViewById(R.id.btn_drawer)
+
+        // Инициализация touchSlop
+        touchSlop = ViewConfiguration.get(this).scaledTouchSlop * 1.5f
 
         //Подключение рендерера
         AndroidGraphicFactory.createInstance(applicationContext)
@@ -89,7 +111,7 @@ class MainActivity : AppCompatActivity() {
         mapView.isClickable = true
         mapView.mapScaleBar.isVisible = true
 
-        //Уставновление предлелов Зума
+        //Уставновление пределов Зума
         mapView.setBuiltInZoomControls(true)
         mapView.setZoomLevelMin(10.toByte())
         mapView.setZoomLevelMax(20.toByte())
@@ -167,42 +189,34 @@ class MainActivity : AppCompatActivity() {
             // Карта готова к взаимодействию
             isMapReady = true
 
-            mapView.setOnTouchListener { _, event ->
-                when (event.action) {
-                    MotionEvent.ACTION_DOWN -> {
-                        isLongPressTriggered = false
-                        isMarkerTouched = mapView.layerManager.layers.any { layer ->
-                            layer is Marker && layer.contains(
-                                mapView.mapViewProjection.toPixels(layer.latLong),
-                                Point(event.x.toDouble(), event.y.toDouble()),
-                                mapView
-                            )
-                        }
-
-                        if (!isMarkerTouched) {
-                            longPressHandler.postDelayed({
-                                isLongPressTriggered = true
-
-                                val tappedLatLong = mapView.mapViewProjection.fromPixels(
-                                    event.x.toDouble(), event.y.toDouble()
-                                )
-
-                                showAddMarkerDialog(tappedLatLong)
-                                mapView.invalidate()
-                            }, 600)
-                        }
-                    }
-
-                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                        longPressHandler.removeCallbacksAndMessages(null)
-                    }
-                }
-                false
-            }
         }
 
-        // Поиск элементов в интерфейсе по id
-        drawerLayout = findViewById(R.id.drawer_layout)
+        //
+        if (intent?.getBooleanExtra("SELECT_LOCATION", false) == true) {
+            // Режим выбора местоположения
+            val currentLat = intent.getDoubleExtra("CURRENT_LAT", 0.0)
+            val currentLon = intent.getDoubleExtra("CURRENT_LON", 0.0)
+            showLocationSelectionMode()
+            return
+        }
+        else { BasicMode() }
+
+        btnToggleMode.setOnClickListener {
+            it.startAnimation(AnimationUtils.loadAnimation(this, R.anim.btn_scale))
+            handler.postDelayed({
+                toggleSelectionMode()
+            }, 100)
+        }
+    }
+
+    private fun BasicMode() {
+        isSelectionMode = false
+        textPlacementContainer.visibility = View.GONE
+        updateToggleButtonState()
+        animateMenuButton(visible = true)
+        animateText(visible = false)
+        drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_UNLOCKED)
+
         val navigationView: NavigationView = findViewById(R.id.navigation_view)
         val btnMenu: ImageButton = findViewById(R.id.btn_drawer)
 
@@ -227,21 +241,147 @@ class MainActivity : AppCompatActivity() {
                 else -> false
             }
         }
+
+        setupMapListeners()
     }
 
-    private fun handleIntent(intent: Intent?) {
-        if (intent?.getBooleanExtra("SELECT_LOCATION", false) == true) {
-            // Режим выбора местоположения
-            val currentLat = intent.getDoubleExtra("CURRENT_LAT", 0.0)
-            val currentLon = intent.getDoubleExtra("CURRENT_LON", 0.0)
+    private fun showLocationSelectionMode() {
+        isSelectionMode = true
+        updateToggleButtonState()
+        animateMenuButton(visible = false)
+        animateText(visible = true)
+        drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED)
 
-            // Показать карту с возможностью выбора метки
+        setupMapListeners()
+    }
+
+    // Переменные для управления обработчиком касаний
+    private val MAX_CLICK_DURATION = 200L
+    private var touchSlop = 0f
+    private var touchStartX = 0f
+    private var touchStartY = 0f
+    private var touchStartTime = 0L;
+    private var isScrolling = false
+
+    private fun setupMapListeners() {
+        mapView.setOnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    touchStartX = event.x
+                    touchStartY = event.y
+                    touchStartTime = System.currentTimeMillis()
+                    isLongPressTriggered = false
+                    isScrolling = false
+
+                    isMarkerTouched = isTouchOnMarker(event)
+
+                    if (!isMarkerTouched && isSelectionMode) {
+                        handler.postDelayed({
+                            if (!isScrolling) {
+                                isLongPressTriggered = true
+                                val tappedLatLong = mapView.mapViewProjection.fromPixels(
+                                    event.x.toDouble(), event.y.toDouble()
+                                )
+                                showAddMarkerDialog(tappedLatLong)
+                            }
+                        }, 500)
+                    }
+                    false
+                }
+
+                MotionEvent.ACTION_MOVE -> {
+                    val dx = abs(event.x - touchStartX)
+                    val dy = abs(event.y - touchStartY)
+
+                    if (dx > touchSlop || dy > touchSlop) {
+                        isScrolling = true
+                        handler.removeCallbacksAndMessages(null)
+                    }
+                    false
+                }
+
+                MotionEvent.ACTION_UP -> {
+                    if (!isLongPressTriggered && !isScrolling && !isMarkerTouched) {
+                        handleClick(event)
+                    }
+                    cleanupTouch()
+                    false
+                }
+
+                MotionEvent.ACTION_CANCEL -> {
+                    cleanupTouch()
+                    false
+                }
+
+                else -> false
+            }
+        }
+    }
+
+    private fun handleLongPress(event: MotionEvent) {
+        if (!isSelectionMode) return
+
+        isLongPressTriggered = true
+        val tappedLatLong = mapView.mapViewProjection.fromPixels(
+            event.x.toDouble(), event.y.toDouble()
+        )
+        showAddMarkerDialog(tappedLatLong)
+    }
+
+    private fun handleClick(event: MotionEvent) {
+        // Обработка обычного клика (если нужно)
+    }
+
+    private fun cleanupTouch() {
+        handler.removeCallbacksAndMessages(null)
+        isLongPressTriggered = false
+        isMarkerTouched = false
+        isScrolling = false
+    }
+
+    private fun toggleSelectionMode() {
+        if (isSelectionMode) {
+            BasicMode()
+        } else {
             showLocationSelectionMode()
         }
     }
 
-    private fun showLocationSelectionMode() {
-        TODO("Сделать по кайфу")
+    private fun animateMenuButton(visible: Boolean) {
+        btn_drawer.animate()
+            .translationX(if (visible) 0f else button_offset)
+            .alpha(if (visible) 1f else 0f)
+            .setDuration(animation_duration)
+            .setInterpolator(AccelerateDecelerateInterpolator())
+            .withStartAction {
+                btn_drawer.isClickable = visible
+            }
+            .start()
+    }
+
+    private fun animateText(visible: Boolean) {
+        textPlacementContainer.animate()
+            .translationY(if (visible) 0f else text_offset)
+            .setDuration(animation_duration)
+            .setInterpolator(AccelerateDecelerateInterpolator())
+            .withStartAction {
+                if (visible) {
+                    textPlacementContainer.visibility = View.VISIBLE
+                }
+            }
+            .withEndAction {
+                if (!visible) {
+                    textPlacementContainer.visibility = View.GONE
+                }
+            }
+            .start()
+    }
+
+    private fun updateToggleButtonState() {
+        btnToggleMode.isSelected = isSelectionMode
+        btnToggleMode.setImageResource(
+            if (isSelectionMode) R.drawable.marker_close else R.drawable.marker
+        )
     }
 
     private fun showAddMarkerDialog(latLong: LatLong) {
@@ -261,6 +401,9 @@ class MainActivity : AppCompatActivity() {
                     putExtra("LONGITUDE", latLong.longitude)
                 }
                 startActivity(intent)
+
+                // Переключаемся обратно в базовый режим когда поставили метку
+                BasicMode()
             }
             .setNegativeButton("Отмена", null)
             .show()
@@ -301,9 +444,19 @@ class MainActivity : AppCompatActivity() {
     }
 
     // Нажимаем ли мы на существующий маркер
-    private fun isTouchOnMarker(latLong: LatLong): Boolean {
+    private fun isTouchOnMarker(event: MotionEvent, tolerance: Double = 20.0): Boolean {
+        val touchPoint = Point(event.x.toDouble(), event.y.toDouble())
+
         return mapView.layerManager.layers.any { layer ->
-            layer is Marker && layer.latLong == latLong
+            if (layer is Marker) {
+                val markerPoint = mapView.mapViewProjection.toPixels(layer.latLong)
+                layer.contains(markerPoint, touchPoint, mapView) ||
+                        distance(markerPoint, touchPoint) < tolerance
+            } else false
         }
+    }
+
+    private fun distance(p1: Point, p2: Point): Double {
+        return sqrt((p1.x - p2.x).pow(2) + (p1.y - p2.y).pow(2))
     }
 }

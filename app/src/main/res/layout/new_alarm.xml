@@ -180,13 +180,6 @@
                 android:text="Воскресенье" />
         </LinearLayout>
 
-        <TextView
-            android:text="Временной интервал"
-            android:textStyle="bold"
-            android:layout_marginTop="12dp"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
-
         <!-- Название будильника -->
         <EditText
             android:id="@+id/title_edit"
