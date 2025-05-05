@@ -69,6 +69,11 @@ dependencies {
     implementation(libs.mapsforge.map.android)
     implementation(libs.androidsvg)
 
+    // Room components
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    kapt(libs.androidx.room.compiler)
+
     //POI
     implementation(libs.mapsforge.poi)
     // Kotlin Coroutines
@@ -77,4 +82,5 @@ dependencies {
 
     // Android Lifecycle (для lifecycleScope)
     implementation (libs.androidx.lifecycle.runtime.ktx)
+
 }
