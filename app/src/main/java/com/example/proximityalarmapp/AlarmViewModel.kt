@@ -1,5 +1,10 @@
 package com.example.proximityalarmapp
 
+import android.app.Application
+import android.os.Bundle
+import android.widget.CheckBox
+import android.widget.EditText
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -9,25 +14,24 @@ import kotlinx.coroutines.launch
 import org.mapsforge.core.model.LatLong
 import java.util.UUID
 
-class AlarmViewModel(private val alarmRepository: AlarmRepository) : ViewModel() {
+class AlarmViewModel(application: Application, private val alarmRepository: AlarmRepository) : AndroidViewModel(application) {
     val alarms: LiveData<List<Alarm>> = alarmRepository.getAllAlarms()
 
     // Флаг чтобы понять ставили мы метку или нет
     val hasLocation = MutableLiveData<Boolean>(false)
 
-    val title = MutableLiveData<String>()
-    val radius = MutableLiveData<Float>()
-    val location = MutableLiveData<LatLong>()
-    val isEnabled = MutableLiveData<Boolean>()
-    val schedule = MutableLiveData<List<DayOfWeek>>()
-    val oneTime = MutableLiveData<Boolean>()
-    val weekdaysOnly = MutableLiveData<Boolean>()
-    val weekendsOnly = MutableLiveData<Boolean>()
-    val sound = MutableLiveData<String>()
-    val vibration = MutableLiveData<Boolean>()
-    val soundEnabled = MutableLiveData<Boolean>()
-    val notification = MutableLiveData<Boolean>()
-    val volume = MutableLiveData<Int>()
+    val title = MutableLiveData<String>("Без названия")
+    val radius = MutableLiveData<Float>(100f)
+    val location = MutableLiveData<LatLong>(LatLong(0.0, 0.0))
+    val isEnabled = MutableLiveData<Boolean>(false)
+    val schedule = MutableLiveData<List<DayOfWeek>>(emptyList())
+    val oneTime = MutableLiveData<Boolean>(true)
+    val weekdaysOnly = MutableLiveData<Boolean>(false)
+    val weekendsOnly = MutableLiveData<Boolean>(false)
+    val vibration = MutableLiveData<Boolean>(true)
+    val soundEnabled = MutableLiveData<Boolean>(true)
+    val notification = MutableLiveData<Boolean>(true)
+    val volume = MutableLiveData<Int>(50)
 
     fun updateTitle(newTitle: String) {
         title.value = newTitle
@@ -61,10 +65,6 @@ class AlarmViewModel(private val alarmRepository: AlarmRepository) : ViewModel()
         weekendsOnly.value = weekends
     }
 
-    fun updateSound(new_sound: String) {
-        sound.value = new_sound
-    }
-
     fun updateVibration(new_vibration: Boolean) {
         vibration.value = new_vibration
     }
@@ -85,6 +85,73 @@ class AlarmViewModel(private val alarmRepository: AlarmRepository) : ViewModel()
         hasLocation.value = hasLoc
     }
 
+    fun createStateBundle(): Bundle {
+        return Bundle().apply {
+            putString("title", title.value ?: "Без названия")
+            putFloat("radius", radius.value ?: 100f)
+
+            putBoolean("oneTime", oneTime.value ?: true)
+            putBoolean("weekdays", weekdaysOnly.value ?: false)
+            putBoolean("weekends", weekendsOnly.value ?: false)
+
+            putStringArray("schedule", schedule.value?.map { it.name }?.toTypedArray() ?: emptyArray())
+
+            putBoolean("vibration", vibration.value ?: true)
+            putBoolean("notification", notification.value ?: true)
+            putBoolean("soundEnabled", soundEnabled.value ?: true)
+            putInt("volume", volume.value ?: 50)
+        }
+    }
+
+    fun restoreState(bundle: Bundle) {
+        title.value = bundle.getString("title", "Без названия")
+        radius.value = bundle.getFloat("radius", 100f)
+
+        oneTime.value = bundle.getBoolean("oneTime", true)
+        weekdaysOnly.value = bundle.getBoolean("weekdays", false)
+        weekendsOnly.value = bundle.getBoolean("weekends", false)
+
+        schedule.value = bundle.getStringArray("schedule")
+            ?.mapNotNull { name ->
+                try {
+                    DayOfWeek.valueOf(name)
+                } catch (e: IllegalArgumentException) {
+                    null
+                }
+            } ?: emptyList()
+
+        vibration.value = bundle.getBoolean("vibration", true)
+        notification.value = bundle.getBoolean("notification", true)
+        soundEnabled.value = bundle.getBoolean("soundEnabled", true)
+        volume.value = bundle.getInt("volume", 50)
+    }
+
+    fun saveMarkerPosition(latLong: LatLong) {
+        updateLocation(latLong)
+        updateHasLocation(true)
+    }
+
+    fun clearMarkerPosition() {
+        updateLocation(LatLong(0.0, 0.0))
+        updateHasLocation(false)
+    }
+
+    fun clearAlarmData() {
+        clearMarkerPosition()
+        updateHasLocation(false)
+        updateTitle("Без названия")
+        updateRadius(100f)
+        updateisEnabled(false)
+        updateSchedule(emptyList())
+        updateoneTime(true)
+        updateweekdaysOnly(false)
+        updateweekendsOnly(false)
+        updateVibration(true)
+        updateSoundEnabled(true)
+        updateNotification(true)
+        updateVolume(50)
+    }
+
     // Добавление будильника
     fun addAlarm() {
         val alarm = Alarm(
@@ -97,7 +164,6 @@ class AlarmViewModel(private val alarmRepository: AlarmRepository) : ViewModel()
             oneTime = oneTime.value != false,
             weekdaysOnly = weekdaysOnly.value == true,
             weekendsOnly = weekendsOnly.value == true,
-            sound = sound.value ?: "Standard",
             vibration = vibration.value != false,
             soundEnabled = soundEnabled.value != false,
             notification = notification.value != false,

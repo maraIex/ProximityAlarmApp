@@ -12,6 +12,7 @@ import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import android.widget.TextView
@@ -55,6 +56,11 @@ import kotlin.math.pow
 import kotlin.math.sqrt
 
 class MainActivity : AppCompatActivity() {
+
+    // Инициализация AlarmViewModel
+    private val viewModel by lazy {
+        (application as ProximityAlarm).appContainer.alarmViewModel
+    }
 
     private lateinit var drawerLayout: DrawerLayout
     // mapView вынесена сюда, потому что нужен доступ к ней вне onCreate
@@ -123,12 +129,18 @@ class MainActivity : AppCompatActivity() {
 
         //Открытие файла карт из папки assets с помощью корутины, поскольку кеширование карты - длительный процесс
         lifecycleScope.launch {
-            val file: File
-            withContext(Dispatchers.IO) {
-                file = File(cacheDir, "SaratovZone.map")
-                file.outputStream().use { output ->
-                    assets.open("SaratovZone.map").copyTo(output)
+            val file = File(cacheDir, "SaratovZone.map")
+
+            // Проверяем, существует ли файл и его размер больше 0
+            if (!file.exists() || file.length() == 0L) {
+                withContext(Dispatchers.IO) {
+                    file.outputStream().use { output ->
+                        assets.open("SaratovZone.map").copyTo(output)
+                    }
                 }
+                Log.d("MainActivity", "Карта успешно скопирована в кеш")
+            } else {
+                Log.d("MainActivity", "Карта уже существует в кеше, пропускаем копирование")
             }
 
             // Инициализация MapDataStore
@@ -191,15 +203,13 @@ class MainActivity : AppCompatActivity() {
 
         }
 
-        //
+        Log.d("MainActivity", "SELECT_LOCATION: ${intent?.getBooleanExtra("SELECT_LOCATION", false)}")
+        // Проверка, запустили мы карту из меню созадния будильника или нет
         if (intent?.getBooleanExtra("SELECT_LOCATION", false) == true) {
-            // Режим выбора местоположения
-            val currentLat = intent.getDoubleExtra("CURRENT_LAT", 0.0)
-            val currentLon = intent.getDoubleExtra("CURRENT_LON", 0.0)
             showLocationSelectionMode()
-            return
+        } else {
+            BasicMode()
         }
-        else { BasicMode() }
 
         btnToggleMode.setOnClickListener {
             it.startAnimation(AnimationUtils.loadAnimation(this, R.anim.btn_scale))
@@ -347,6 +357,14 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun checkSelectionMode() {
+        if (intent?.getBooleanExtra("SELECT_LOCATION", false) == true) {
+            showLocationSelectionMode()
+        } else {
+            BasicMode()
+        }
+    }
+
     private fun animateMenuButton(visible: Boolean) {
         btn_drawer.animate()
             .translationX(if (visible) 0f else button_offset)
@@ -384,31 +402,54 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
+//    private fun showAddMarkerDialog(latLong: LatLong) { НЕ ТРОГАТЬ, РАСХОММЕНТИРОВАТЬ ПРИ ЯДЕРНОЙ УГРОЗЕ
+//        AlertDialog.Builder(this)
+//            .setTitle("Добавить будильник")
+//            .setMessage("Координаты: ${latLong.latitude}, ${latLong.longitude}")
+//            .setPositiveButton("Добавить") { _, _ ->
+//                val marker = createInteractiveMarker(this, latLong, mapView)
+//                mapView.layerManager.layers.add(marker)
+//                mapView.invalidate()
+//
+//                // Переход на NewAlarmActivity с передачей координат
+//                val resultIntent = Intent().apply {
+//                    putExtra("LATITUDE", latLong.latitude)
+//                    putExtra("LONGITUDE", latLong.longitude)
+//                    // Можно передать сам маркер или его параметры
+//                    putExtra("MARKER_ADDED", true)
+//                }
+//                setResult(RESULT_OK, resultIntent)
+//                BasicMode()
+//            }
+//            .setNegativeButton("Отмена") { _, _ ->
+//                setResult(RESULT_CANCELED)
+//                BasicMode()
+//            }
+//            .show()
+//    }
+
     private fun showAddMarkerDialog(latLong: LatLong) {
         AlertDialog.Builder(this)
             .setTitle("Добавить будильник")
             .setMessage("Координаты: ${latLong.latitude}, ${latLong.longitude}")
             .setPositiveButton("Добавить") { _, _ ->
-                val marker = createInteractiveMarker(this, latLong, mapView)
-                mapView.layerManager.layers.add(marker)
-                //println("Маркер добавлен, количество слоёв: ${mapView.layerManager.layers.size()}") был для дебага, остался для уверенности
-                //println("Координаты: ${marker.latLong}") братишка для дебага
-                mapView.invalidate()
-
-                // Переход на NewAlarmActivity с передачей координат
-                val intent = Intent(this, NewAlarmActivity::class.java).apply {
-                    putExtra("LATITUDE", latLong.latitude)
-                    putExtra("LONGITUDE", latLong.longitude)
+                // 1. Сохраняем координаты в ViewModel
+                viewModel.apply {
+                    updateLocation(latLong)
+                    updateHasLocation(true)
                 }
-                startActivity(intent)
 
-                // Переключаемся обратно в базовый режим когда поставили метку
+                BasicMode()
+                // 2. Возвращаемся в NewAlarmActivity (на самом деле создаём новую)
+                startActivity(Intent(this, NewAlarmActivity::class.java).apply {
+                    //flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                })
+            }
+            .setNegativeButton("Отмена") { _, _ ->
                 BasicMode()
             }
-            .setNegativeButton("Отмена", null)
             .show()
     }
-
 
     fun createInteractiveMarker(context: Context, latLong: LatLong, mapView: MapView): Marker {
         // Создаем Bitmap для маркера
@@ -458,5 +499,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun distance(p1: Point, p2: Point): Double {
         return sqrt((p1.x - p2.x).pow(2) + (p1.y - p2.y).pow(2))
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        checkSelectionMode()
     }
 }
