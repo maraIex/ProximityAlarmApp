@@ -198,6 +198,8 @@ class MainActivity : AppCompatActivity() {
             // Добавление слоя в MapView
             mapView.layerManager.layers.add(tileRendererLayer)
 
+            setupAlarmMarkers()
+
             // Карта готова к взаимодействию
             isMapReady = true
 
@@ -402,32 +404,6 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-//    private fun showAddMarkerDialog(latLong: LatLong) { НЕ ТРОГАТЬ, РАСХОММЕНТИРОВАТЬ ПРИ ЯДЕРНОЙ УГРОЗЕ
-//        AlertDialog.Builder(this)
-//            .setTitle("Добавить будильник")
-//            .setMessage("Координаты: ${latLong.latitude}, ${latLong.longitude}")
-//            .setPositiveButton("Добавить") { _, _ ->
-//                val marker = createInteractiveMarker(this, latLong, mapView)
-//                mapView.layerManager.layers.add(marker)
-//                mapView.invalidate()
-//
-//                // Переход на NewAlarmActivity с передачей координат
-//                val resultIntent = Intent().apply {
-//                    putExtra("LATITUDE", latLong.latitude)
-//                    putExtra("LONGITUDE", latLong.longitude)
-//                    // Можно передать сам маркер или его параметры
-//                    putExtra("MARKER_ADDED", true)
-//                }
-//                setResult(RESULT_OK, resultIntent)
-//                BasicMode()
-//            }
-//            .setNegativeButton("Отмена") { _, _ ->
-//                setResult(RESULT_CANCELED)
-//                BasicMode()
-//            }
-//            .show()
-//    }
-
     private fun showAddMarkerDialog(latLong: LatLong) {
         AlertDialog.Builder(this)
             .setTitle("Добавить будильник")
@@ -441,9 +417,7 @@ class MainActivity : AppCompatActivity() {
 
                 BasicMode()
                 // 2. Возвращаемся в NewAlarmActivity (на самом деле создаём новую)
-                startActivity(Intent(this, NewAlarmActivity::class.java).apply {
-                    //flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                })
+                startActivity(Intent(this, NewAlarmActivity::class.java))
             }
             .setNegativeButton("Отмена") { _, _ ->
                 BasicMode()
@@ -451,16 +425,15 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    fun createInteractiveMarker(context: Context, latLong: LatLong, mapView: MapView): Marker {
+    fun createInteractiveMarker(alarm: Alarm): Marker {
         // Создаем Bitmap для маркера
-        val bitmap = AndroidBitmap(BitmapFactory.decodeResource(context.resources, R.drawable.marker))
+        val bitmap = AndroidBitmap(BitmapFactory.decodeResource(resources, R.drawable.marker))
 
         // Создаем маркер с обработчиками
-        return object : Marker(latLong, bitmap, 0, -bitmap.height / 2) {
+        return object : Marker(alarm.location, bitmap, 0, -bitmap.height / 2) {
             override fun onTap(tapLatLong: LatLong, layerXY: Point, tapXY: Point): Boolean {
                 if (contains(layerXY, tapXY, mapView)) {
-                    Toast.makeText(context, "Будильник: ${tapLatLong.latitude}, ${tapLatLong.longitude}",
-                        Toast.LENGTH_SHORT).show()
+                    showAlarmInfo(alarm)
                     return true
                 }
                 return false
@@ -468,7 +441,7 @@ class MainActivity : AppCompatActivity() {
 
             override fun onLongPress(tapLatLong: LatLong, layerXY: Point, tapXY: Point): Boolean {
                 if (contains(layerXY, tapXY, mapView)) {
-                    AlertDialog.Builder(context)
+                    AlertDialog.Builder(this@MainActivity)
                         .setTitle("Удалить будильник?")
                         .setMessage("Вы точно хотите удалить этот будильник?")
                         .setPositiveButton("Да") { _, _ ->
@@ -499,6 +472,54 @@ class MainActivity : AppCompatActivity() {
 
     private fun distance(p1: Point, p2: Point): Double {
         return sqrt((p1.x - p2.x).pow(2) + (p1.y - p2.y).pow(2))
+    }
+
+    private fun setupAlarmMarkers() {
+        viewModel.alarms.observe(this) { alarms ->
+            // Удаляем старые маркеры
+            mapView.layerManager.layers.removeAll { it is Marker }
+
+            // Добавляем новые маркеры для каждого будильника
+            alarms.forEach { alarm ->
+                val marker = createInteractiveMarker(alarm)
+                mapView.layerManager.layers.add(marker)
+            }
+
+            mapView.invalidate() // Обновляем карту
+        }
+    }
+
+    private fun showAlarmInfo(alarm: Alarm) {
+        AlertDialog.Builder(this@MainActivity) // исправлено здесь
+            .setTitle(alarm.title)
+            .setMessage("""
+            Радиус: ${alarm.radius} м
+            Координаты: ${alarm.location.latitude}, ${alarm.location.longitude}
+            Расписание: ${formatSchedule(alarm.schedule)}
+        """.trimIndent())
+            .setPositiveButton("OK", null)
+            .setNegativeButton("Удалить") { _, _ ->
+                viewModel.deleteAlarm(alarm)
+            }
+            .show()
+    }
+
+    private fun formatSchedule(schedule: List<DayOfWeek>): String {
+        return when {
+            schedule.size == 7 -> "Ежедневно"
+            schedule.isEmpty() -> "Одноразовый"
+            else -> schedule.joinToString(" ") {
+                when(it) {
+                    DayOfWeek.MONDAY -> "Пн"
+                    DayOfWeek.TUESDAY -> "Вт"
+                    DayOfWeek.WEDNESDAY -> "Ср"
+                    DayOfWeek.THURSDAY -> "Чт"
+                    DayOfWeek.FRIDAY -> "Пт"
+                    DayOfWeek.SATURDAY -> "Сб"
+                    DayOfWeek.SUNDAY -> "Вс"
+                }
+            }
+        }
     }
 
     override fun onNewIntent(intent: Intent) {

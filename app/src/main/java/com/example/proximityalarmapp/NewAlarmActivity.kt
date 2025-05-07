@@ -21,6 +21,7 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
 import org.mapsforge.core.model.LatLong
+import java.util.UUID
 import kotlin.getValue
 
 class NewAlarmActivity : AppCompatActivity() {
@@ -156,17 +157,6 @@ class NewAlarmActivity : AppCompatActivity() {
         textSelectLocation.setOnClickListener {
             openMapForLocationSelection()
         }
-
-//        if (latitude != 0.0 || longitude != 0.0) {
-//            // Значит метка уже установлена
-//            val location = LatLong(latitude, longitude)
-//            viewModel.updateLocation(location)
-//            viewModel.updateHasLocation(true)
-//            updateLocationText(location)
-//        } else {
-//            // Метка еще не установлена
-//            viewModel.updateHasLocation(false)
-//        }
 
         // Получаем возможные значения радиуса
         val radius_values = resources.getStringArray(R.array.radius_values)
@@ -315,8 +305,27 @@ class NewAlarmActivity : AppCompatActivity() {
         // Подключение кнопки сохранения
         textSave.setOnClickListener {
             if (viewModel.hasLocation.value == true) {
-                viewModel.addAlarm()
-                viewModel.clearAlarmData()
+                // Создаем и сохраняем будильник
+                val alarm = Alarm(
+                    id = UUID.randomUUID().toString(),
+                    location = viewModel.location.value!!,
+                    radius = viewModel.radius.value ?: 100f,
+                    title = viewModel.title.value ?: "Без названия",
+                    isEnabled = true,
+                    schedule = viewModel.schedule.value ?: emptyList(),
+                    oneTime = viewModel.oneTime.value ?: true,
+                    weekdaysOnly = viewModel.weekdaysOnly.value ?: false,
+                    weekendsOnly = viewModel.weekendsOnly.value ?: false,
+                    vibration = viewModel.vibration.value ?: true,
+                    soundEnabled = viewModel.soundEnabled.value ?: true,
+                    notification = viewModel.notification.value ?: true,
+                    volume = viewModel.volume.value ?: 50
+                )
+
+                // Сохраняем через ViewModel
+                viewModel.addAlarm(alarm)
+
+                // Закрываем активность
                 finish()
             } else {
                 Toast.makeText(this, "Пожалуйста, укажите местоположение будильника", Toast.LENGTH_SHORT).show()
@@ -418,62 +427,6 @@ class NewAlarmActivity : AppCompatActivity() {
     private fun getRadiusValues(): List<Float> {
         return resources.getStringArray(R.array.radius_values).map { it.toFloat() }
     }
-
-//    private fun updateUIFromViewModel() {
-//        // 1. Обновляем координаты
-//        viewModel.location.value?.takeIf { it.isValid() }?.let {
-//            updateLocationText(it)
-//            textSelectLocation.text = "Метка установлена"
-//        } ?: run {
-//            textCoords.text = "Координаты не указаны"
-//            textSelectLocation.text = "Указать на карте"
-//        }
-//
-//        // 2. Обновляем радиус
-//        viewModel.radius.value?.let { radius ->
-//            val radiusValues = getRadiusValues()
-//            if (radius in radiusValues) {
-//                radiusSpinner.setSelection(radiusValues.indexOf(radius))
-//            } else {
-//                radiusEdit.setText(radius.toString())
-//            }
-//        }
-//
-//        // 3. Обновляем переключатели
-//        oneTimeSwitch.isChecked = viewModel.oneTime.value ?: true
-//        weekdaysSwitch.isChecked = viewModel.weekdaysOnly.value ?: false
-//        weekendsSwitch.isChecked = viewModel.weekendsOnly.value ?: false
-//
-//        // 4. Обновляем дни недели
-//        viewModel.schedule.value?.let { schedule ->
-//            findViewById<CheckBox>(R.id.checkbox_monday).isChecked = DayOfWeek.MONDAY in schedule
-//            findViewById<CheckBox>(R.id.checkbox_tuesday).isChecked = DayOfWeek.TUESDAY in schedule
-//            findViewById<CheckBox>(R.id.checkbox_wednesday).isChecked = DayOfWeek.WEDNESDAY in schedule
-//            findViewById<CheckBox>(R.id.checkbox_thursday).isChecked = DayOfWeek.THURSDAY in schedule
-//            findViewById<CheckBox>(R.id.checkbox_friday).isChecked = DayOfWeek.FRIDAY in schedule
-//            findViewById<CheckBox>(R.id.checkbox_saturday).isChecked = DayOfWeek.SATURDAY in schedule
-//            findViewById<CheckBox>(R.id.checkbox_sunday).isChecked = DayOfWeek.SUNDAY in schedule
-//        }
-//
-//        // 5. Обновляем название
-//        viewModel.title.value?.let { title ->
-//            if (titleEdit.text.toString() != title) {
-//                titleEdit.setText(title)
-//            }
-//        }
-//
-//        // 6. Обновляем настройки оповещения
-//        vibrationCheckBox.isChecked = viewModel.vibration.value ?: true
-//        soundCheckBox.isChecked = viewModel.soundEnabled.value ?: true
-//        notificationCheckBox.isChecked = viewModel.notification.value ?: true
-//
-//        // 7. Обновляем громкость
-//        viewModel.volume.value?.let { volume ->
-//            if (volumeSeekBar.progress != volume) {
-//                volumeSeekBar.progress = volume
-//            }
-//        }
-//    }
 
     private fun Bundle.getLocation(): LatLong? {
         val lat = getDouble("LATITUDE", 0.0)

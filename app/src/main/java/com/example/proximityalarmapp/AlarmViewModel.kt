@@ -10,12 +10,13 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import org.mapsforge.core.model.LatLong
 import java.util.UUID
 
 class AlarmViewModel(application: Application, private val alarmRepository: AlarmRepository) : AndroidViewModel(application) {
-    val alarms: LiveData<List<Alarm>> = alarmRepository.getAllAlarms()
+    val alarms: LiveData<List<Alarm>> = alarmRepository.alarms
 
     // Флаг чтобы понять ставили мы метку или нет
     val hasLocation = MutableLiveData<Boolean>(false)
@@ -152,44 +153,15 @@ class AlarmViewModel(application: Application, private val alarmRepository: Alar
         updateVolume(50)
     }
 
-    // Добавление будильника
-    fun addAlarm() {
-        val alarm = Alarm(
-            id = UUID.randomUUID().toString(),
-            location = location.value ?: LatLong(0.0, 0.0),
-            radius = radius.value ?: 100f,
-            title = title.value ?: "Без названия",
-            isEnabled = isEnabled.value != true,
-            schedule = (schedule.value ?: emptyList()),
-            oneTime = oneTime.value != false,
-            weekdaysOnly = weekdaysOnly.value == true,
-            weekendsOnly = weekendsOnly.value == true,
-            vibration = vibration.value != false,
-            soundEnabled = soundEnabled.value != false,
-            notification = notification.value != false,
-            volume = volume.value ?: 50,
-        )
-
+    fun addAlarm(alarm: Alarm) {
         viewModelScope.launch {
             alarmRepository.addAlarm(alarm)
         }
     }
 
-    fun getAllAlarms(): LiveData<List<Alarm>> {
-        return AlarmRepository.getAllAlarms()
-    }
-
-    // Поиск будильника по координатам
-    fun findAlarmAtLocation(location: LatLong): Alarm? {
-        return alarmRepository.getAllAlarms().value?.firstOrNull { alarm ->
-            alarm.location.sphericalDistance(location) < (alarm.radius / 111_320.0)
-            // Конвертируем метры в градусы (примерно)
-        }
-    }
-
-    fun saveAlarms() {
+    fun deleteAlarm(alarm: Alarm) {
         viewModelScope.launch {
-            alarmRepository.saveAlarms()
+            alarmRepository.deleteAlarm(alarm)
         }
     }
 }
