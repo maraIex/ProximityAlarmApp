@@ -164,4 +164,13 @@ class AlarmViewModel(application: Application, private val alarmRepository: Alar
             alarmRepository.deleteAlarm(alarm)
         }
     }
+
+    fun getAlarm(alarmId: String): LiveData<Alarm?> {
+        val result = MutableLiveData<Alarm?>()
+        viewModelScope.launch {
+            val alarmEntity = alarmRepository.getAlarmById(alarmId)
+            result.postValue(alarmEntity?.toAlarm())
+        }
+        return result
+    }
 }

@@ -44,8 +44,8 @@ class AlarmRepository private constructor(context: Context) {
         }
     }
 
-    suspend fun getAlarmById(id: String): Alarm? {
-        return alarmDao.getAlarmById(id)?.toAlarm()
+    suspend fun getAlarmById(alarmId: String): AlarmEntity? {
+        return alarmDao.getAlarmById(alarmId)
     }
 }
 
