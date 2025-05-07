@@ -476,8 +476,16 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupAlarmMarkers() {
         viewModel.alarms.observe(this) { alarms ->
-            // Удаляем старые маркеры
-            mapView.layerManager.layers.removeAll { it is Marker }
+            // Создаем список маркеров для удаления
+            val markersToRemove = mapView.layerManager.layers
+                .filterIsInstance<Marker>()
+                .toList() // Создаем копию списка
+
+            // Удаляем каждый маркер отдельно
+            markersToRemove.forEach { marker ->
+                mapView.layerManager.layers.remove(marker)
+                (marker.bitmap as? AndroidBitmap)?.decrementRefCount()
+            }
 
             // Добавляем новые маркеры для каждого будильника
             alarms.forEach { alarm ->
