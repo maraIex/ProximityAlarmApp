@@ -36,10 +36,10 @@ class AlarmsActivity : AppCompatActivity() {
         // Инициализация RecyclerView
         recyclerView = findViewById(R.id.recycler_alarms)
         recyclerView.layoutManager = LinearLayoutManager(this)
-        adapter = AlarmAdapter { alarm ->
-            // Обработка клика на будильник
-            showAlarmDetails(alarm)
-        }
+        val adapter = AlarmAdapter(
+            onClick = { alarm -> showAlarmDetails(alarm) },
+            viewModel = viewModel
+        )
         recyclerView.adapter = adapter
 
         // Подписка на изменения списка будильников

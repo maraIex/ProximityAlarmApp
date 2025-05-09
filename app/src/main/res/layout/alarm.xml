@@ -19,7 +19,7 @@
         android:orientation="vertical"
         android:padding="16dp">
 
-        <!-- Первая строка: название и переключатель -->
+        <!-- Первая строка: название, переключатель и кнопка меню -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -42,6 +42,17 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"/>
+
+            <ImageButton
+                android:id="@+id/menu_button"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_marginStart="8dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/three_dots_vert"
+                android:contentDescription="Действия с будильником"
+                android:scaleType="centerInside"
+                app:tint="@color/gray" />
         </LinearLayout>
 
         <!-- Вторая строка: расписание -->
