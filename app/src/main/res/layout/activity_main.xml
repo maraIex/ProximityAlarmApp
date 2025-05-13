@@ -1,45 +1,85 @@
-<layout xmlns:android="http://schemas.android.com/apk/res/android">
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
         <androidx.drawerlayout.widget.DrawerLayout
-        xmlns:app="http://schemas.android.com/apk/res-auto"
-        android:id="@+id/drawer_layout"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent">
-
-        <!-- Контейнер для карты -->
-        <org.mapsforge.map.android.view.MapView
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:id="@+id/map"/>
-
-        <!-- Контейнер для кнопки -->
-        <FrameLayout
+            android:id="@+id/drawer_layout"
             android:layout_width="match_parent"
             android:layout_height="match_parent">
 
-            <ImageButton
-                android:id="@+id/btn_drawer"
+            <!-- Контейнер для карты -->
+            <org.mapsforge.map.android.view.MapView
+                android:id="@+id/map"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"/>
+
+            <!-- Контейнер для всех UI элементов поверх карты -->
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+
+                <!-- Текстовая надпись сверху (с анимацией) -->
+                <androidx.cardview.widget.CardView
+                    android:id="@+id/text_placement_container"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="top|center_horizontal"
+                    android:layout_marginTop="20dp"
+                    android:visibility="gone"
+                    android:translationY="-100dp"
+                    app:cardBackgroundColor="#FFFFFF"
+                    app:cardCornerRadius="8dp"
+                    app:cardElevation="8dp">
+
+                    <TextView
+                        android:id="@+id/text_placement"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Установите точку на карте"
+                        android:textSize="18sp"
+                        android:textColor="#FF333333"
+                        android:padding="12dp"
+                        android:shadowColor="#80FFFFFF"
+                        android:shadowDx="1"
+                        android:shadowDy="1"
+                        android:shadowRadius="2"/>
+                </androidx.cardview.widget.CardView>
+
+                <!-- Кнопка меню -->
+                <ImageButton
+                    android:id="@+id/btn_drawer"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:layout_margin="20dp"
+                    android:contentDescription="Меню"
+                    android:src="@drawable/hamburger_button"
+                    android:background="@drawable/circular_button_background"
+                    android:layout_gravity="top|start"
+                    android:translationX="-100dp"
+                    android:clickable="true" />
+
+                <!-- Новая кнопка переключения режимов -->
+                <ImageButton
+                    android:id="@+id/btn_toggle_mode"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:layout_margin="20dp"
+                    android:contentDescription="Режим установки метки"
+                    android:src="@drawable/marker"
+                    android:background="@drawable/btn_toggle_mode_background"
+                    android:layout_gravity="top|end"/>
+            </FrameLayout>
+
+            <com.google.android.material.navigation.NavigationView
+                android:id="@+id/navigation_view"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_margin="20dp"
-                android:contentDescription="TODO"
-                android:src="@drawable/hamburger_button"
-                android:background="@drawable/circular_button_background"
-                android:layout_gravity="top|start" />
-        </FrameLayout>
-
-        <com.google.android.material.navigation.NavigationView
-            android:id="@+id/navigation_view"
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:layout_gravity="start"
-            app:menu="@menu/drawer_menu"
-            app:itemIconSize="32dp"
-            app:itemTextAppearance="@style/CustomNavigationText" />
+                android:layout_height="match_parent"
+                android:layout_gravity="start"
+                app:menu="@menu/drawer_menu"
+                app:itemIconSize="32dp"
+                app:itemTextAppearance="@style/CustomNavigationText"/>
         </androidx.drawerlayout.widget.DrawerLayout>
-
     </RelativeLayout>
 </layout>
