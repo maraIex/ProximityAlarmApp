@@ -97,7 +97,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         //
-        MapMarkerManager.initUserMarker(this, R.drawable.marker)
+        MapMarkerManager.initUserMarker(this, R.drawable.iamhere)
         //Подключение рендерера
         AndroidGraphicFactory.createInstance(applicationContext)
 
