@@ -2,13 +2,17 @@ package com.example.proximityalarmapp
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.ServiceConnection
 import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
+import android.location.Location
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
+import android.os.IBinder
 import android.os.Looper
 import android.util.Log
 import android.view.MotionEvent
@@ -41,6 +45,7 @@ import androidx.core.app.ActivityCompat
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import com.example.proximityalarmapp.LocationTrackingService.LocalBinder
 import org.mapsforge.core.model.Point
 import java.io.File
 import java.io.InputStream
@@ -59,9 +64,27 @@ class MainActivity : AppCompatActivity() {
     private val alarmViewModel: AlarmViewModel = AlarmViewModel(AlarmRepository)
     // mapView вынесена сюда, потому что нужен доступ к ней вне onCreate
     private lateinit var mapView: MapView
+    //Подписка на обновление позиции
+    private var trackingService: LocationTrackingService? = null
+    private val serviceConnection = object : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+            Log.d("Binding", "Service connected")
+            trackingService = (service as LocalBinder).getService().apply {
+                addLocationListener(::handleLocationUpdate)
+                Log.d("Binding", "Service connected with ${locationUpdateListener.size} listeners")
+            }
+        }
+
+        override fun onServiceDisconnected(name: ComponentName?) {
+            Log.e("Binding", "Service disconnected")
+            trackingService?.removeLocationListener(::handleLocationUpdate)
+            trackingService = null
+            Log.w("Binding", "Service unexpectedly disconnected")
+        }
+    }
     // Флаг окончания загрузки карты
     private var isMapReady = false
-
+    //Флаг об первой инициализации маркера
 
     // Обработчик долгого касания
     private val longPressHandler = Handler(Looper.getMainLooper())
@@ -73,17 +96,8 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-
-        //Запуск в фоновом режим
-        if (checkPermissions()) {
-            //Запускаем трекинг с помощью FusedLocationApi
-            startLocationTracking()
-        } else {
-            requestPermissions()
-        }
-
-        setContentView(R.layout.activity_main)
-
+        //
+        MapMarkerManager.initUserMarker(this, R.drawable.marker)
         //Подключение рендерера
         AndroidGraphicFactory.createInstance(applicationContext)
 
@@ -113,6 +127,7 @@ class MainActivity : AppCompatActivity() {
                 file.outputStream().use { output ->
                     assets.open("SaratovZone.map").copyTo(output)
                 }
+                isMapReady = true
             }
 
             // Инициализация MapDataStore
@@ -160,8 +175,7 @@ class MainActivity : AppCompatActivity() {
                 }
             }
             //Центрирование карты и установка стратового положения( пока в центре карты, но потом будет в зависимости от гео)
-            val boundingBox = mapDataStore.boundingBox()
-            mapView.model.mapViewPosition.setCenter(boundingBox.centerPoint)
+            mapView.model.mapViewPosition.center = LatLong(51.602578, 46.007720)
             mapView.model.mapViewPosition.zoomLevel = 15.toByte()
 
             // Применение темы к карте
@@ -169,9 +183,14 @@ class MainActivity : AppCompatActivity() {
 
             // Добавление слоя в MapView
             mapView.layerManager.layers.add(tileRendererLayer)
-
+            //Запуск в фоновом режим
+            if (checkPermissions()) {
+                //Запускаем трекинг с помощью FusedLocationApi
+                startLocationTracking()
+            } else {
+                requestPermissions()
+            }
             // Карта готова к взаимодействию
-            isMapReady = true
 
             @SuppressLint("ClickableViewAccessibility")
             mapView.setOnTouchListener { view, event ->
@@ -195,51 +214,26 @@ class MainActivity : AppCompatActivity() {
                             }, 600)
                         }
                     }
+
                     MotionEvent.ACTION_UP -> {
                         longPressHandler.removeCallbacksAndMessages(null)
                         if (!isLongPressTriggered && !isMarkerTouched) {
                             view.performClick() // Вызов при обычном клике
                         }
                     }
+
                     MotionEvent.ACTION_CANCEL -> {
                         longPressHandler.removeCallbacksAndMessages(null)
                     }
                 }
                 false
             }
-
-
-//            mapView.setOnTouchListener { _, event ->
-//                when (event.action) {
-//                    MotionEvent.ACTION_DOWN -> {
-//                        isLongPressTriggered = false
-//                        longPressHandler.postDelayed({
-//                            isLongPressTriggered = true
-//
-//                            // Получаем координаты касания
-//                            val tappedLatLong = mapView.mapViewProjection.fromPixels(
-//                                event.x.toDouble(), event.y.toDouble()
-//                            )
-//
-//                            showAddMarkerDialog(tappedLatLong)
-//                            mapView.invalidate()
-//                        }, 600) // Время долгого нажатия (600 мс)
-//                    }
-//
-//                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-//                        longPressHandler.removeCallbacksAndMessages(null)
-//                    }
-//                }
-//                false
-//            }
         }
-
         // Тестовый маркер
         //val bitmap = AndroidBitmap(BitmapFactory.decodeResource(resources, R.drawable.marker))
         //val marker = Marker(LatLong(51.602578, 46.007720), bitmap, 0, -bitmap.height / 2)
         //mapView.layerManager.layers.add(marker)
         //mapView.invalidate()
-
         // Поиск элементов в интерфейсе по id
         drawerLayout = findViewById(R.id.drawer_layout)
         val navigationView: NavigationView = findViewById(R.id.navigation_view)
@@ -268,6 +262,11 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    override fun onDestroy() {
+        unbindService(serviceConnection) // Важно!
+        trackingService?.removeLocationListener(::handleLocationUpdate)
+        super.onDestroy()
+    }
     //ОГРОМНЫЙ БЛОК ФУНКЦИЙ ГЕОКОДИНГА
 
     private fun checkPermissions(): Boolean {
@@ -378,7 +377,8 @@ class MainActivity : AppCompatActivity() {
     private fun startLocationService() {
         try {
             val intent = Intent(this, LocationTrackingService::class.java)
-            startForegroundService(intent)
+            startService(intent)
+            bindService(intent, serviceConnection, BIND_AUTO_CREATE)
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка при запуске сервиса: ${e.message}")
         }
@@ -386,7 +386,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun schedulePeriodicWork() {
         val workRequest = PeriodicWorkRequestBuilder<LocationCheckWorker>(
-            30, // Интервал в минутах
+            1, // Интервал в минутах
             TimeUnit.MINUTES
         )
             .setInitialDelay(10, TimeUnit.MINUTES)
@@ -400,8 +400,29 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
+    private fun handleLocationUpdate(location: Location) {
+        Log.d("LocationFlow", "HandleLocationUpdate triggered! Location: $location")
+        // Добавьте проверку на область видимости карты
+        val saratovBounds = LatLong(48.0, 44.0) to LatLong(53.0, 48.0)
+        val currentLatLong = LatLong(location.latitude, location.longitude)
 
+        if (!currentLatLong.isWithin(saratovBounds)) {
+            Log.w("Location", "Position outside Saratov region: $currentLatLong")
+            return
+        }
 
+        runOnUiThread {
+            val latLong = LatLong(location.latitude, location.longitude)
+            Log.d("Location", "Updating marker: $latLong")
+            MapMarkerManager.updateUserLocation(mapView, latLong)
+        }
+    }
+
+    // Добавьте расширение для проверки координат
+    fun LatLong.isWithin(bounds: Pair<LatLong, LatLong>): Boolean {
+        return latitude in bounds.first.latitude..bounds.second.latitude &&
+                longitude in bounds.first.longitude..bounds.second.longitude
+    }
 
     private fun showAddMarkerDialog(latLong: LatLong) {
         AlertDialog.Builder(this)

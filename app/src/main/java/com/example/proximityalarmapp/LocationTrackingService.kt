@@ -1,6 +1,7 @@
 package com.example.proximityalarmapp
 
 import android.Manifest
+import android.annotation.SuppressLint
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import android.app.*
@@ -10,26 +11,34 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.location.Location
+import android.location.LocationManager
+import android.os.Binder
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.SystemClock
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.google.android.gms.location.*
-import kotlinx.coroutines.tasks.await
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 
 class LocationTrackingService : Service() {
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var geofencingClient: GeofencingClient
     private lateinit var locationCallback: LocationCallback
+    internal val locationUpdateListener = mutableListOf<(Location) -> Unit>()
     private var currentMode = TrackingMode.LOW_POWER
 
     companion object {
-        const val TARGET_LAT = 55.751244
-        const val TARGET_LNG = 37.618423
+        //  центр Саратовской области
+        const val TARGET_LAT = 51.602578   // Широта
+        const val TARGET_LNG = 46.007720   // Долгота
         const val CHANNEL_ID = "location_channel"
     }
 
@@ -38,8 +47,50 @@ class LocationTrackingService : Service() {
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         geofencingClient = LocationServices.getGeofencingClient(this)
         createNotificationChannel()
-        initLocationCallback()
+        setupLocationCallback()
         startLowPowerTracking()
+    }
+
+    //Подписка на маркера
+    fun addLocationListener(listener: (Location) -> Unit) {
+        locationUpdateListener.add(listener)
+    }
+    //Отписка от маркера
+    fun removeLocationListener(listener: (Location) -> Unit) {
+        locationUpdateListener.remove(listener)
+    }
+    inner class LocalBinder : Binder() {
+        fun getService(): LocationTrackingService = this@LocationTrackingService
+    }
+
+    override fun onBind(intent: Intent): IBinder {
+        return LocalBinder()
+    }
+
+    private fun setupLocationCallback() {
+        locationCallback = object : LocationCallback() {
+            override fun onLocationResult(result: LocationResult) {
+                result.locations.forEach { location ->
+                    Log.d("LocationService", "...")
+
+                    if (!location.isValid()) {
+                        Log.w("LocationService", "Invalid location")
+                        return@forEach
+                    }
+
+                    // Важное исправление: оповещаем всех listeners
+                    locationUpdateListener.forEach { listener ->
+                        listener(location)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun Location.isValid(): Boolean {
+        return latitude in -90.0..90.0 &&
+                longitude in -180.0..180.0 &&
+                elapsedRealtimeNanos > SystemClock.elapsedRealtimeNanos() - TimeUnit.MINUTES.toNanos(15)
     }
 
     private fun createNotificationChannel() {
@@ -62,16 +113,6 @@ class LocationTrackingService : Service() {
             .build()
     }
 
-    private fun initLocationCallback() {
-        locationCallback = object : LocationCallback() {
-            override fun onLocationResult(result: LocationResult) {
-                result.lastLocation?.let { location ->
-                    checkDistance(location)
-                }
-            }
-        }
-    }
-
     private fun startLowPowerTracking() {
         if (!hasLocationPermission()) {
             stopSelf()
@@ -80,6 +121,7 @@ class LocationTrackingService : Service() {
 
         val request = LocationRequest.Builder(Priority.PRIORITY_LOW_POWER, 600_000L)
             .setMinUpdateIntervalMillis(300_000L)
+            .setWaitForAccurateLocation(true)
             .build()
 
         try {
@@ -95,12 +137,18 @@ class LocationTrackingService : Service() {
         }
     }
 
+    // LocationTrackingService.kt
     private fun startForegroundServiceWithNotification() {
         val notification = getNotification()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            startForeground(1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION)
-        } else {
-            startForeground(1, notification)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION)
+            } else {
+                startForeground(1, notification)
+            }
+            Log.d("Service", "Foreground service started") // Добавлено
+        } catch (e: Exception) {
+            Log.e("Service", "Foreground start error: ${e.message}") // Добавлено
         }
     }
 
@@ -112,19 +160,6 @@ class LocationTrackingService : Service() {
             this,
             Manifest.permission.ACCESS_COARSE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
-    }
-
-    private fun checkDistance(location: Location) {
-        val targetLocation = Location("").apply {
-            latitude = TARGET_LAT
-            longitude = TARGET_LNG
-        }
-        val distance = location.distanceTo(targetLocation)
-
-        when {
-            distance < 1000 -> activateGeofencing()
-            distance < 5000 -> switchToBalancedMode()
-        }
     }
 
     private fun switchToBalancedMode() {
@@ -189,12 +224,17 @@ class LocationTrackingService : Service() {
         try {
             fusedLocationClient.removeLocationUpdates(locationCallback)
             geofencingClient.removeGeofences(createGeofencePendingIntent())
+            Log.d("Service", "Location updates stopped")
         } catch (e: Exception) {
-            Log.e("Service", "Error stopping location updates: ${e.message}")
+            Log.e("Service", "Error in onDestroy: ${e.message}")
         }
+        unbindAllListeners()
     }
 
-    override fun onBind(intent: Intent?): IBinder? = null
+    private fun unbindAllListeners() {
+        locationUpdateListener.clear()
+        Log.d("Service", "All listeners unbound")
+    }
 }
 
 enum class TrackingMode { LOW_POWER, BALANCED, HIGH_ACCURACY }
@@ -215,46 +255,82 @@ class LocationCheckWorker(
         const val WORK_TAG = "location_check_work"
         private const val NEARBY_RADIUS_METERS = 5000 // 5 км
     }
+    @SuppressLint("MissingPermission")
     override suspend fun doWork(): Result {
-        return try {
-            if (!checkLocationPermissions()) {
-                Log.d("LocationWorker", "No location permissions")
-                return Result.success()
-            }
+        Log.d("LocationWorker", "Worker started")
 
-            val lastLocation = getLastLocation() ?: return Result.retry()
+        if (!checkLocationPermissions()) {
+            Log.w("LocationWorker", "Location permissions denied")
+            return Result.success() // или Result.failure() в зависимости от логики
+        }
 
-            if (isNearTarget(lastLocation)) {
-                Log.d("LocationWorker", "User is near target - starting service")
-                startLocationService()
-                Result.success()
-            } else {
-                Log.d("LocationWorker", "User is far from target")
-                Result.success()
+        if (!isLocationEnabled()) {
+            Log.w("LocationWorker", "Location services disabled")
+            return Result.retry()
+        }
+
+        val result = AtomicReference<Result>()
+        val resultRef = AtomicReference<Result>()
+        val latch = CountDownLatch(1)
+        var locationCallback: LocationCallback? = null
+
+        val handler = Handler(Looper.getMainLooper())
+        val timeoutRunnable = Runnable {
+            Log.w("LocationWorker", "Location request timeout")
+            result.set(Result.retry())
+            latch.countDown()
+        }
+
+        try {
+            val request = LocationRequest.Builder(
+                Priority.PRIORITY_HIGH_ACCURACY,
+                TimeUnit.SECONDS.toMillis(5) // Исправлено: закрывающая скобка для toMillis()
+            ).build() // Исправлено: вызов build() после Builder
+
+            locationCallback = object : LocationCallback() {
+                override fun onLocationResult(result: LocationResult) {
+                    result.lastLocation?.let { location ->
+                        Log.d("LocationWorker", "Location received: $location")
+                        handler.removeCallbacks(timeoutRunnable)
+                        if (isNearTarget(location)) { // Исправлено: убрана лишняя скобка
+                            startLocationService()
+                            resultRef.set(Result.success()) // Переименовано во избежание конфликта имён
+                        } else {
+                            resultRef.set(Result.success())
+                        }
+                        latch.countDown()
+                    }
+                }
             }
+            handler.postDelayed(timeoutRunnable, 10_000L)
+
+            fusedLocationClient.requestLocationUpdates(
+                request,
+                locationCallback, // Безопасная проверка
+                Looper.getMainLooper()
+            )
+
+            latch.await(10_000L, TimeUnit.MILLISECONDS)
+            return resultRef.get() ?: Result.retry()
+
         } catch (e: SecurityException) {
             Log.e("LocationWorker", "SecurityException: ${e.message}")
-            Result.failure()
+            return Result.failure()
         } catch (e: Exception) {
             Log.e("LocationWorker", "Error: ${e.message}")
-            Result.retry()
+            return Result.retry()
+        } finally {
+            locationCallback?.let {
+                fusedLocationClient.removeLocationUpdates(it)
+            }
+            handler.removeCallbacks(timeoutRunnable)
         }
     }
 
-    private suspend fun getLastLocation(): Location? {
-        return try {
-            // Дополнительная проверка на случай, если разрешения были отозваны
-            if (!checkLocationPermissions()) {
-                return null
-            }
-            fusedLocationClient.lastLocation.await()
-        } catch (e: SecurityException) {
-            Log.e("LocationWorker", "SecurityException in getLastLocation: ${e.message}")
-            null
-        } catch (e: Exception) {
-            Log.e("LocationWorker", "Error in getLastLocation: ${e.message}")
-            null
-        }
+    private fun isLocationEnabled(): Boolean {
+        val locationManager = applicationContext.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
+                locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
     }
 
     private fun isNearTarget(location: Location): Boolean {
