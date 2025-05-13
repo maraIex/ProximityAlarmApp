@@ -34,6 +34,9 @@ android {
     kotlinOptions {
         jvmTarget = "11"
     }
+    kapt {
+        correctErrorTypes = true
+    }
     buildFeatures{
         viewBinding=true
         dataBinding = true
@@ -69,6 +72,15 @@ dependencies {
     // Android
     implementation(libs.mapsforge.map.android)
     implementation(libs.androidsvg)
+
+    // Room components
+    implementation(libs.kotlinx.metadata.jvm)
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    kapt(libs.androidx.room.compiler)
+
+    // RecyclerView
+    implementation(libs.androidx.recyclerview)
 
     //POI
     implementation(libs.mapsforge.poi)

@@ -1,3 +1,4 @@
+.idea
 *.iml
 .gradle
 /local.properties
@@ -13,3 +14,11 @@
 .externalNativeBuild
 .cxx
 local.properties
+AndroidProjectSystem.xml
+deploymentTargetSelector.xml
+gradle.xml
+kotlinc.xml
+migrations.xml
+misc.xml
+runConfigurations.xml
+vcs.xml

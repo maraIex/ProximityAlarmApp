@@ -1,44 +1,51 @@
 package com.example.proximityalarmapp
 
+import android.content.Context
 import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.map
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
-object AlarmRepository {
-    // Список будильников
-    private val alarmList = mutableListOf<Alarm>()
-    // LiveData - "обертка", которая дает доступ к данным и позволяет наблюдать за этими данными
-    private val alarmsLiveData = MutableLiveData<List<Alarm>>()
+class AlarmRepository private constructor(context: Context) {
+    private val alarmDao = AppDatabase.getDatabase(context).alarmDao()
+    private val coroutineScope = CoroutineScope(Dispatchers.IO)
 
-    // При создании репозитория - заполнить LiveData актуальным списком будильников (аналогия - выставить на витрину)
-    init {
-        alarmsLiveData.value = alarmList
+    val alarms: LiveData<List<Alarm>> = alarmDao.getAllAlarms().map { entities ->
+        entities.map { it.toAlarm() }
     }
 
-    // С помощью этой функции можно получить список будильников
-    fun getAllAlarms(): LiveData<List<Alarm>> = alarmsLiveData
+    companion object {
+        @Volatile
+        private var INSTANCE: AlarmRepository? = null
 
-    fun getAlarmById(id: String): Alarm? {
-        return alarmList.firstOrNull { it.id == id }
+        fun getInstance(context: Context): AlarmRepository {
+            return INSTANCE ?: synchronized(this) {
+                INSTANCE ?: AlarmRepository(context.applicationContext).also { INSTANCE = it }
+            }
+        }
     }
-
-    //все функции self explanatory
 
     fun addAlarm(alarm: Alarm) {
-        alarmList.add(alarm)
-        alarmsLiveData.value = alarmList.toList()
+        coroutineScope.launch {
+            alarmDao.insert(AlarmEntity.fromAlarm(alarm))
+        }
     }
 
-    fun updateAlarm(updatedAlarm: Alarm) {
-        val index = alarmList.indexOfFirst { it.id == updatedAlarm.id }
-        if (index != -1) {
-            alarmList[index] = updatedAlarm
-            alarmsLiveData.value = alarmList.toList()
+    fun updateAlarm(alarm: Alarm) {
+        coroutineScope.launch {
+            alarmDao.update(AlarmEntity.fromAlarm(alarm))
         }
     }
 
     fun deleteAlarm(alarm: Alarm) {
-        alarmList.remove(alarm)
-        alarmsLiveData.value = alarmList.toList()
+        coroutineScope.launch {
+            alarmDao.delete(alarm.id)
+        }
+    }
+
+    suspend fun getAlarmById(alarmId: String): AlarmEntity? {
+        return alarmDao.getAlarmById(alarmId)
     }
 }
 

@@ -18,8 +18,12 @@ constraintlayout = "2.2.1"
 playServicesLocation = "21.3.0"
 cardview = "1.0.0"
 workRuntimeKtx = "2.10.0"
+room = "2.7.1" # Database
+kotlinxMetadataJvm = "0.7.0"
+recyclerview = "1.3.2"
 
 [libraries]
+kotlinx-metadata-jvm = { module = "org.jetbrains.kotlinx:kotlinx-metadata-jvm", version.ref = "kotlinxMetadataJvm" }
 # Basic libraries
 androidsvg = { module = "com.caverock:androidsvg", version.ref = "androidsvg" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -53,6 +57,11 @@ androidx-drawerlayout = { module = "androidx.drawerlayout:drawerlayout", version
 google-material = { module = "com.google.android.material:material", version = "1.12.0" } # Material components (Toolbar, buttons and other)
 play-services-location = { module = "com.google.android.gms:play-services-location", version.ref = "playServicesLocation" }
 androidx-cardview = { group = "androidx.cardview", name = "cardview", version.ref = "cardview" }
+# Room база данных
+androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
+androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
+androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
+androidx-recyclerview = { group = "androidx.recyclerview", name = "recyclerview", version = "1.3.2" }
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
