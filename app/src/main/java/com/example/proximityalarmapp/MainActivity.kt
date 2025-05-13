@@ -1,16 +1,18 @@
 package com.example.proximityalarmapp
 
-//Бибилиотек для рисования маркера на карте
-// Импорт для биндингов
-// Импорт дял навигации
-// Импорты для MapsForge. Карты, андроид утилиты, офлайн рендерер, и считывание файлов
+import android.Manifest
+import android.annotation.SuppressLint
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.ServiceConnection
+import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
-import android.graphics.drawable.BitmapDrawable
-import android.graphics.drawable.Drawable
+import android.location.Location
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
+import android.os.IBinder
 import android.os.Looper
 import android.util.Log
 import android.view.MotionEvent
@@ -18,7 +20,6 @@ import android.view.View
 import android.widget.TextView
 import android.widget.ImageButton
 import android.widget.Toast
-import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.GravityCompat
@@ -41,11 +42,15 @@ import org.mapsforge.map.rendertheme.XmlThemeResourceProvider
 import org.mapsforge.map.android.graphics.AndroidBitmap
 import org.mapsforge.map.layer.overlay.Marker
 import androidx.appcompat.app.AlertDialog
-import kotlinx.coroutines.awaitAll
+import androidx.core.app.ActivityCompat
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
+import com.example.proximityalarmapp.LocationTrackingService.LocalBinder
 import org.mapsforge.core.model.Point
-import org.mapsforge.core.util.MercatorProjection
 import java.io.File
 import java.io.InputStream
+import java.util.concurrent.TimeUnit
 import android.view.ViewConfiguration
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.AnimationUtils
@@ -56,6 +61,11 @@ import kotlin.math.pow
 import kotlin.math.sqrt
 
 class MainActivity : AppCompatActivity() {
+  
+    companion object {
+        private const val LOCATION_PERMISSION_REQUEST = 100
+        private const val TAG = "MainActivity" 
+    }
 
     // Инициализация AlarmViewModel
     private val viewModel by lazy {
@@ -65,8 +75,27 @@ class MainActivity : AppCompatActivity() {
     private lateinit var drawerLayout: DrawerLayout
     // mapView вынесена сюда, потому что нужен доступ к ней вне onCreate
     private lateinit var mapView: MapView
+    //Подписка на обновление позиции
+    private var trackingService: LocationTrackingService? = null
+    private val serviceConnection = object : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+            Log.d("Binding", "Service connected")
+            trackingService = (service as LocalBinder).getService().apply {
+                addLocationListener(::handleLocationUpdate)
+                Log.d("Binding", "Service connected with ${locationUpdateListener.size} listeners")
+            }
+        }
+
+        override fun onServiceDisconnected(name: ComponentName?) {
+            Log.e("Binding", "Service disconnected")
+            trackingService?.removeLocationListener(::handleLocationUpdate)
+            trackingService = null
+            Log.w("Binding", "Service unexpectedly disconnected")
+        }
+    }
     // Флаг окончания загрузки карты
     private var isMapReady = false
+    //Флаг об первой инициализации маркера
 
     // Обработчик долгого касания
     private val handler = Handler(Looper.getMainLooper())
@@ -94,6 +123,8 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        //
+        MapMarkerManager.initUserMarker(this, R.drawable.iamhere)
 
         // Инициализация кнопки переключения и текста установки
         btnToggleMode = findViewById(R.id.btn_toggle_mode)
@@ -138,9 +169,10 @@ class MainActivity : AppCompatActivity() {
                         assets.open("SaratovZone.map").copyTo(output)
                     }
                 }
+                isMapReady = true
                 Log.d("MainActivity", "Карта успешно скопирована в кеш")
             } else {
-                Log.d("MainActivity", "Карта уже существует в кеше, пропускаем копирование")
+                Log.d("MainActivity", "Карта уже существует в кеше, пропускаем копирование"
             }
 
             // Инициализация MapDataStore
@@ -197,13 +229,18 @@ class MainActivity : AppCompatActivity() {
 
             // Добавление слоя в MapView
             mapView.layerManager.layers.add(tileRendererLayer)
+            //Запуск в фоновом режим
+            if (checkPermissions()) {
+                //Запускаем трекинг с помощью FusedLocationApi
+                startLocationTracking()
+            } else {
+                requestPermissions()
+            }
 
             setupAlarmMarkers()
-
-            // Карта готова к взаимодействию
-            isMapReady = true
-
         }
+        // Поиск элементов в интерфейсе по id
+        drawerLayout = findViewById(R.id.drawer_layout)
 
         Log.d("MainActivity", "SELECT_LOCATION: ${intent?.getBooleanExtra("SELECT_LOCATION", false)}")
         // Проверка, запустили мы карту из меню созадния будильника или нет
@@ -276,58 +313,42 @@ class MainActivity : AppCompatActivity() {
     private var isScrolling = false
 
     private fun setupMapListeners() {
-        mapView.setOnTouchListener { _, event ->
-            when (event.action) {
-                MotionEvent.ACTION_DOWN -> {
-                    touchStartX = event.x
-                    touchStartY = event.y
-                    touchStartTime = System.currentTimeMillis()
-                    isLongPressTriggered = false
-                    isScrolling = false
-
-                    isMarkerTouched = isTouchOnMarker(event)
-
-                    if (!isMarkerTouched && isSelectionMode) {
-                        handler.postDelayed({
-                            if (!isScrolling) {
+        @SuppressLint("ClickableViewAccessibility")
+            mapView.setOnTouchListener { view, event ->
+                when (event.action) {
+                    MotionEvent.ACTION_DOWN -> {
+                        isLongPressTriggered = false
+                        isMarkerTouched = mapView.layerManager.layers.any { layer ->
+                            layer is Marker && layer.contains(
+                                mapView.mapViewProjection.toPixels(layer.latLong),
+                                Point(event.x.toDouble(), event.y.toDouble()),
+                                mapView
+                            )
+                        }
+                        if (!isMarkerTouched) {
+                            longPressHandler.postDelayed({
                                 isLongPressTriggered = true
                                 val tappedLatLong = mapView.mapViewProjection.fromPixels(
                                     event.x.toDouble(), event.y.toDouble()
                                 )
                                 showAddMarkerDialog(tappedLatLong)
-                            }
-                        }, 500)
+                            }, 600)
+                        }
                     }
-                    false
-                }
 
-                MotionEvent.ACTION_MOVE -> {
-                    val dx = abs(event.x - touchStartX)
-                    val dy = abs(event.y - touchStartY)
-
-                    if (dx > touchSlop || dy > touchSlop) {
-                        isScrolling = true
-                        handler.removeCallbacksAndMessages(null)
+                    MotionEvent.ACTION_UP -> {
+                        longPressHandler.removeCallbacksAndMessages(null)
+                        if (!isLongPressTriggered && !isMarkerTouched) {
+                            view.performClick() // Вызов при обычном клике
+                        }
                     }
-                    false
-                }
 
-                MotionEvent.ACTION_UP -> {
-                    if (!isLongPressTriggered && !isScrolling && !isMarkerTouched) {
-                        handleClick(event)
+                    MotionEvent.ACTION_CANCEL -> {
+                        longPressHandler.removeCallbacksAndMessages(null)
                     }
-                    cleanupTouch()
-                    false
                 }
-
-                MotionEvent.ACTION_CANCEL -> {
-                    cleanupTouch()
-                    false
-                }
-
-                else -> false
+                false
             }
-        }
     }
 
     private fun handleLongPress(event: MotionEvent) {
@@ -404,6 +425,168 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
+    override fun onDestroy() {
+        unbindService(serviceConnection) // Важно!
+        trackingService?.removeLocationListener(::handleLocationUpdate)
+        super.onDestroy()
+    }
+    //ОГРОМНЫЙ БЛОК ФУНКЦИЙ ГЕОКОДИНГА
+
+    private fun checkPermissions(): Boolean {
+        val hasFineLocation = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+
+        val hasCoarseLocation = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+
+        // Для Android 10+ нужно фоновое разрешение
+        val hasBackgroundLocation = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_BACKGROUND_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+        } else {
+            true
+        }
+
+        // Для Android 12+ нужно разрешение на точные геозоны
+        val hasPreciseGeofence = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+        } else {
+            true
+        }
+
+        return (hasFineLocation || hasCoarseLocation) && hasBackgroundLocation && hasPreciseGeofence
+    }
+
+    private fun requestPermissions() {
+        val permissionsToRequest = mutableListOf<String>()
+
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED &&
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            permissionsToRequest.add(Manifest.permission.ACCESS_FINE_LOCATION)
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            permissionsToRequest.add(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+        }
+
+        if (permissionsToRequest.isNotEmpty()) {
+            ActivityCompat.requestPermissions(
+                this,
+                permissionsToRequest.toTypedArray(),
+                LOCATION_PERMISSION_REQUEST
+            )
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+
+        if (requestCode == LOCATION_PERMISSION_REQUEST) {
+            if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
+                startLocationTracking()
+            } else {
+                // Обработка отказа от разрешений
+                if (shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_FINE_LOCATION)) {
+                    // Пользователь отклонил, но можно показать объяснение
+                    showPermissionExplanation()
+                } else {
+                    // Пользователь отклонил и поставил "Не спрашивать снова"
+                    Toast.makeText(this, "Для работы приложения необходимы разрешения на местоположение", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    private fun showPermissionExplanation() {
+        AlertDialog.Builder(this)
+            .setTitle("Необходимы разрешения")
+            .setMessage("Приложению нужны разрешения на местоположение для работы геозон")
+            .setPositiveButton("OK") { _, _ -> requestPermissions() }
+            .setNegativeButton("Отмена", null)
+            .show()
+    }
+
+    private fun startLocationTracking() {
+        if (!checkPermissions()) {
+            Log.w(TAG, "Попытка запуска без необходимых разрешений")
+            return
+        }
+        // Запускаем сервис
+        startLocationService()
+        // Запускаем периодическую проверку
+        schedulePeriodicWork()
+    }
+
+    private fun startLocationService() {
+        try {
+            val intent = Intent(this, LocationTrackingService::class.java)
+            startService(intent)
+            bindService(intent, serviceConnection, BIND_AUTO_CREATE)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка при запуске сервиса: ${e.message}")
+        }
+    }
+
+    private fun schedulePeriodicWork() {
+        val workRequest = PeriodicWorkRequestBuilder<LocationCheckWorker>(
+            1, // Интервал в минутах
+            TimeUnit.MINUTES
+        )
+            .setInitialDelay(10, TimeUnit.MINUTES)
+            .addTag(LocationCheckWorker.WORK_TAG)
+            .build()
+
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            "location_check",
+            ExistingPeriodicWorkPolicy.UPDATE, // Обновляем существующую работу
+            workRequest
+        )
+    }
+
+    private fun handleLocationUpdate(location: Location) {
+        Log.d("LocationFlow", "HandleLocationUpdate triggered! Location: $location")
+        // Добавьте проверку на область видимости карты
+        val saratovBounds = LatLong(48.0, 44.0) to LatLong(53.0, 48.0)
+        val currentLatLong = LatLong(location.latitude, location.longitude)
+
+        if (!currentLatLong.isWithin(saratovBounds)) {
+            Log.w("Location", "Position outside Saratov region: $currentLatLong")
+            return
+        }
+
+        runOnUiThread {
+            val latLong = LatLong(location.latitude, location.longitude)
+            Log.d("Location", "Updating marker: $latLong")
+            MapMarkerManager.updateUserLocation(mapView, latLong)
+        }
+    }
+
+    // Добавьте расширение для проверки координат
+    fun LatLong.isWithin(bounds: Pair<LatLong, LatLong>): Boolean {
+        return latitude in bounds.first.latitude..bounds.second.latitude &&
+                longitude in bounds.first.longitude..bounds.second.longitude
+    }
+
     private fun showAddMarkerDialog(latLong: LatLong) {
         AlertDialog.Builder(this)
             .setTitle("Добавить будильник")
@@ -424,6 +607,7 @@ class MainActivity : AppCompatActivity() {
             }
             .show()
     }
+
 
     fun createInteractiveMarker(alarm: Alarm): Marker {
         // Создаем Bitmap для маркера
