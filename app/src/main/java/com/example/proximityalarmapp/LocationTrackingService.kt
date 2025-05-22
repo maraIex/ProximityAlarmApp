@@ -12,34 +12,53 @@ import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.location.Location
 import android.location.LocationManager
-import android.os.Binder
-import android.os.Build
-import android.os.Handler
-import android.os.IBinder
-import android.os.Looper
-import android.os.SystemClock
+import android.media.SoundPool
+import android.media.AudioManager
+import android.os.*
 import android.util.Log
+import androidx.annotation.RequiresPermission
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.google.android.gms.location.*
+import java.util.Calendar
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
 
 class LocationTrackingService : Service() {
+
+    private val serviceScope = CoroutineScope(Dispatchers.IO)
+
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var geofencingClient: GeofencingClient
     private lateinit var locationCallback: LocationCallback
     internal val locationUpdateListener = mutableListOf<(Location) -> Unit>()
     private var currentMode = TrackingMode.LOW_POWER
 
+
+    private val soundPool by lazy {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            SoundPool.Builder().setMaxStreams(1).build()
+        } else {
+            SoundPool(1, AudioManager.STREAM_ALARM, 0)
+        }
+    }
+
     companion object {
         //  центр Саратовской области
         const val TARGET_LAT = 51.602578   // Широта
         const val TARGET_LNG = 46.007720   // Долгота
         const val CHANNEL_ID = "location_channel"
+        const val CHANNEL_ID_ALARMS = "alarms_channel"
     }
 
     override fun onCreate() {
@@ -48,6 +67,13 @@ class LocationTrackingService : Service() {
         geofencingClient = LocationServices.getGeofencingClient(this)
         createNotificationChannel()
         setupLocationCallback()
+
+        serviceScope.launch {
+            val alarms = (getApplication() as ProximityAlarm)
+                .appContainer.alarmRepository.getActiveAlarmsSync()
+            setupGeofences(alarms)
+        }
+
         startLowPowerTracking()
     }
 
@@ -71,6 +97,9 @@ class LocationTrackingService : Service() {
         locationCallback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
                 result.locations.forEach { location ->
+                    serviceScope.launch {
+                        checkAlarms(location)
+                    }
                     Log.d("LocationService", "...")
 
                     if (!location.isValid()) {
@@ -94,6 +123,7 @@ class LocationTrackingService : Service() {
     }
 
     private fun createNotificationChannel() {
+
         val channel = NotificationChannel(
             CHANNEL_ID,
             "Location Tracking",
@@ -219,7 +249,219 @@ class LocationTrackingService : Service() {
         )
     }
 
+    // 22.05.2025 Срабатывание будильника
+
+    @SuppressLint("MissingPermission")
+    private suspend fun checkAlarms(location: Location) {
+        // Проверяем все необходимые разрешения
+        if (!hasRequiredPermissions()) {
+            Log.w("AlarmCheck", "Missing required permissions")
+            return
+        }
+
+        try {
+            val alarms = (getApplication() as ProximityAlarm)
+                .appContainer.alarmRepository.getActiveAlarmsSync()
+
+            alarms.forEach { alarm ->
+                if (isWithinRadius(location, alarm) && shouldTrigger(alarm)) {
+                    triggerAlarm(alarm)
+                }
+            }
+        } catch (e: SecurityException) {
+            Log.e("AlarmCheck", "Security exception: ${e.message}")
+            // Можно добавить запрос недостающих разрешений
+            requestMissingPermissions()
+        } catch (e: Exception) {
+            Log.e("AlarmCheck", "Error checking alarms: ${e.message}")
+        }
+    }
+
+    private fun hasRequiredPermissions(): Boolean {
+        return ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED &&
+                ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED &&
+                (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q ||
+                        ContextCompat.checkSelfPermission(
+                            this,
+                            Manifest.permission.ACCESS_BACKGROUND_LOCATION
+                        ) == PackageManager.PERMISSION_GRANTED)
+    }
+
+    private fun requestMissingPermissions() {
+        val permissionsNeeded = mutableListOf<String>()
+
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            permissionsNeeded.add(Manifest.permission.ACCESS_FINE_LOCATION)
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            permissionsNeeded.add(Manifest.permission.POST_NOTIFICATIONS)
+        }
+
+        if (permissionsNeeded.isNotEmpty()) {
+            // Для сервиса нужно запустить Activity для запроса разрешений
+            val intent = Intent(this, PermissionRequestActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                putStringArrayListExtra("permissions", ArrayList(permissionsNeeded))
+            }
+            startActivity(intent)
+        }
+    }
+
+    private fun isWithinRadius(location: Location, alarm: Alarm): Boolean {
+        val distance = FloatArray(1)
+        Location.distanceBetween(
+            location.latitude,
+            location.longitude,
+            alarm.location.latitude,
+            alarm.location.longitude,
+            distance
+        )
+        return distance[0] <= alarm.radius
+    }
+
+    @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
+    private fun triggerAlarm(alarm: Alarm) {
+        if (!hasNotificationPermission()) {
+            Log.w("Alarm", "Can't show notification - no permission")
+            return
+        }
+        try {
+            val notification = NotificationCompat.Builder(this, CHANNEL_ID_ALARMS)
+                .setContentTitle("Сработал будильник: ${alarm.title}")
+                .setContentText("Вы в радиусе ${alarm.radius} метров от цели")
+                .setSmallIcon(R.drawable.alarm_ring)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setAutoCancel(true)
+                .apply {
+                    if (alarm.vibration) {
+                        setVibrate(longArrayOf(0, 500, 200, 500))
+                    }
+                }
+                .build()
+
+            NotificationManagerCompat.from(this).notify(alarm.id.hashCode(), notification)
+
+            if (alarm.soundEnabled) playSound(alarm.sound)
+        } catch (e: Exception) {
+            Log.e("Alarm", "Notification error", e)
+        }
+
+
+    }
+
+    private fun hasNotificationPermission(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+        } else {
+            true
+        }
+    }
+
+    private fun startVibration() {
+        val vibrator = getSystemService(VIBRATOR_SERVICE) as? Vibrator
+        vibrator?.let {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                it.vibrate(VibrationEffect.createOneShot(1000, VibrationEffect.DEFAULT_AMPLITUDE))
+            } else {
+                @Suppress("DEPRECATION")
+                it.vibrate(1000)
+            }
+        }
+    }
+
+    private fun shouldTrigger(alarm: Alarm): Boolean {
+        if (alarm.oneTime) return true
+
+        val calendar = Calendar.getInstance()
+        val currentDay = when (calendar.get(Calendar.DAY_OF_WEEK)) {
+            Calendar.MONDAY -> DayOfWeek.MONDAY
+            Calendar.TUESDAY -> DayOfWeek.TUESDAY
+            Calendar.WEDNESDAY -> DayOfWeek.WEDNESDAY
+            Calendar.THURSDAY -> DayOfWeek.THURSDAY
+            Calendar.FRIDAY -> DayOfWeek.FRIDAY
+            Calendar.SATURDAY -> DayOfWeek.SATURDAY
+            Calendar.SUNDAY -> DayOfWeek.SUNDAY
+            else -> return false
+        }
+
+        return when {
+            alarm.weekdaysOnly -> currentDay in listOf(
+                DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY,
+                DayOfWeek.THURSDAY, DayOfWeek.FRIDAY
+            )
+            alarm.weekendsOnly -> currentDay in listOf(
+                DayOfWeek.SATURDAY, DayOfWeek.SUNDAY
+            )
+            else -> currentDay in alarm.schedule
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun setupGeofences(alarms: List<Alarm>) {
+        if (!hasLocationPermission()) {
+            Log.w("Geofence", "Location permission denied")
+            return
+        }
+
+        try {
+            geofencingClient.addGeofences(
+                GeofencingRequest.Builder()
+                    .addGeofences(alarms.map { createGeofence(it) })
+                    .build(),
+                createGeofencePendingIntent()
+            )
+        } catch (e: SecurityException) {
+            Log.e("Geofence", "Security error", e)
+        }
+    }
+
+    private fun createGeofence(alarm: Alarm): Geofence {
+        return Geofence.Builder()
+            .setRequestId(alarm.id)
+            .setCircularRegion(
+                alarm.location.latitude,
+                alarm.location.longitude,
+                alarm.radius
+            )
+            .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER)
+            .setExpirationDuration(Geofence.NEVER_EXPIRE)
+            .build()
+    }
+
+    private fun playSound(soundRes: String) {
+        val soundId = when(soundRes) {
+            else -> soundPool.load(this, R.raw.alarm_default, 1)
+        }
+
+        soundPool.setOnLoadCompleteListener { _, _, status ->
+            if (status == 0) {
+                soundPool.play(soundId, 1f, 1f, 1, 0, 1f)
+            }
+        }
+    }
+
     override fun onDestroy() {
+        serviceScope.cancel() // Отменяем все корутины
+        soundPool.release()
         super.onDestroy()
         try {
             fusedLocationClient.removeLocationUpdates(locationCallback)

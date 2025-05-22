@@ -172,7 +172,7 @@ class MainActivity : AppCompatActivity() {
                 isMapReady = true
                 Log.d("MainActivity", "Карта успешно скопирована в кеш")
             } else {
-                Log.d("MainActivity", "Карта уже существует в кеше, пропускаем копирование"
+                Log.d("MainActivity", "Карта уже существует в кеше, пропускаем копирование")
             }
 
             // Инициализация MapDataStore
@@ -326,7 +326,7 @@ class MainActivity : AppCompatActivity() {
                             )
                         }
                         if (!isMarkerTouched) {
-                            longPressHandler.postDelayed({
+                            handler.postDelayed({
                                 isLongPressTriggered = true
                                 val tappedLatLong = mapView.mapViewProjection.fromPixels(
                                     event.x.toDouble(), event.y.toDouble()
@@ -337,14 +337,14 @@ class MainActivity : AppCompatActivity() {
                     }
 
                     MotionEvent.ACTION_UP -> {
-                        longPressHandler.removeCallbacksAndMessages(null)
+                        handler.removeCallbacksAndMessages(null)
                         if (!isLongPressTriggered && !isMarkerTouched) {
                             view.performClick() // Вызов при обычном клике
                         }
                     }
 
                     MotionEvent.ACTION_CANCEL -> {
-                        longPressHandler.removeCallbacksAndMessages(null)
+                        handler.removeCallbacksAndMessages(null)
                     }
                 }
                 false

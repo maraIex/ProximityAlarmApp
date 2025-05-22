@@ -6,6 +6,7 @@ import androidx.lifecycle.map
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class AlarmRepository private constructor(context: Context) {
     private val alarmDao = AppDatabase.getDatabase(context).alarmDao()
@@ -46,6 +47,12 @@ class AlarmRepository private constructor(context: Context) {
 
     suspend fun getAlarmById(alarmId: String): AlarmEntity? {
         return alarmDao.getAlarmById(alarmId)
+    }
+
+    suspend fun getActiveAlarmsSync(): List<Alarm> {
+        return withContext(Dispatchers.IO) {
+            alarmDao.getActiveAlarms().map { it.toAlarm() }
+        }
     }
 }
 
