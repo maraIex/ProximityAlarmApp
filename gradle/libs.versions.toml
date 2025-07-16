@@ -16,6 +16,9 @@ material = "1.12.0"
 activity = "1.10.1"
 constraintlayout = "2.2.1"
 playServicesLocation = "21.3.0"
+vtm = "Tag"
+vtmAndroidNativesArmeabiV7a = "0.24.0"
+vtmVersion = "listOf(CURRENT-VERSION)"
 cardview = "1.0.0"
 workRuntimeKtx = "2.10.0"
 room = "2.7.1" # Database
@@ -56,6 +59,13 @@ androidx-drawerlayout = { module = "androidx.drawerlayout:drawerlayout", version
 #noinspection SimilarGradleDependency
 google-material = { module = "com.google.android.material:material", version = "1.12.0" } # Material components (Toolbar, buttons and other)
 play-services-location = { module = "com.google.android.gms:play-services-location", version.ref = "playServicesLocation" }
+vtm = { module = "com.github.mapsforge:vtm", version.ref = "vtm" }
+vtm-android = { module = "org.vtm:vtm-android", version.ref = "vtmAndroidNativesArmeabiV7a" }
+vtm-android-natives-arm64-v8a = { module = "org.vtm:vtm-android-natives-arm64-v8a", version.ref = "vtmAndroidNativesArmeabiV7a" }
+vtm-android-natives-armeabi-v7a = { module = "org.vtm:vtm-android-natives-armeabi-v7a", version.ref = "vtmAndroidNativesArmeabiV7a" }
+vtm-android-natives-x86 = { module = "org.vtm:vtm-android-natives-x86", version.ref = "vtmAndroidNativesArmeabiV7a" }
+vtm-android-natives-x86_x4 = { module = "org.vtm:vtm-android-natives-x86_64", version.ref = "vtmAndroidNativesArmeabiV7a" }
+vtm-themes = { module = "listOf(PACKAGE):vtm-themes", version = "0.24.1" }
 androidx-cardview = { group = "androidx.cardview", name = "cardview", version.ref = "cardview" }
 # Room база данных
 androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }

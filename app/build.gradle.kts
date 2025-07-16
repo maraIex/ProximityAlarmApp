@@ -92,10 +92,10 @@ dependencies {
     // Android Lifecycle (для lifecycleScope)
     implementation (libs.androidx.lifecycle.runtime.ktx)
 
+    implementation(libs.play.services.location)
     // Fused Location API
     implementation(libs.play.services.location)
     // Асинхронные процессы
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.work.multiprocess)
-
 }
